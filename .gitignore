@@ -1,1 +1,20 @@
+# Binary
 pintosha
+digestify-my-ci
+
+# Build output
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Go
+*.test
+*.out
