@@ -8,6 +8,9 @@ import (
 	"pintosha/scanner"
 )
 
+// Version is set at build time via -ldflags "-X main.Version=v1.2.3".
+var Version = "dev"
+
 func main() {
 	path := flag.String("path", ".", "path to the project to scan")
 	dryRun := flag.Bool("dry-run", false, "show changes without writing files")
@@ -16,7 +19,14 @@ func main() {
 	gitlabHost := flag.String("gitlab-host", "https://gitlab.com", "GitLab host URL")
 	pinActions := flag.Bool("pin-actions", true, "pin GitHub Actions uses: refs to SHAs")
 	pinImages := flag.Bool("pin-images", true, "pin Docker image: tags to digests")
+	version := flag.Bool("version", false, "print version and exit")
+	flag.BoolVar(version, "v", false, "print version and exit")
 	flag.Parse()
+
+	if *version {
+		fmt.Println(Version)
+		return
+	}
 
 	cfg := scanner.Config{
 		Path:        *path,
