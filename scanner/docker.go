@@ -89,7 +89,7 @@ func (d *dockerResolver) fetchDigest(image, tag string) (string, error) {
 		req.Header.Set("Authorization", bearerPrefix+d.token)
 	}
 
-	resp, err := d.client.Do(req)
+	resp, err := doWithRetry(d.client, req, 3)
 	if err != nil {
 		return "", err
 	}
@@ -120,7 +120,11 @@ func (d *dockerResolver) fetchAuthToken(registryHost, repoPath string) (string, 
 		authURL = fmt.Sprintf("https://%s/v2/token?scope=repository:%s:pull&service=%s", registryHost, repoPath, registryHost)
 	}
 
-	resp, err := d.client.Get(authURL)
+	authReq, err := http.NewRequest("GET", authURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := doWithRetry(d.client, authReq, 3)
 	if err != nil {
 		return "", err
 	}

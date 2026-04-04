@@ -7,6 +7,7 @@ type Config struct {
 	GitHubToken string
 	GitLabToken string
 	GitLabHost  string
-	PinActions  bool // pin GitHub Actions `uses:` refs
-	PinImages   bool // pin Docker `image:` refs
+	PinActions  bool     // pin GitHub Actions `uses:` refs
+	PinImages   bool     // pin Docker `image:` refs
+	Exclude     []string // glob patterns of relative paths to skip
 }

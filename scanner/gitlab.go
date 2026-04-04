@@ -121,7 +121,7 @@ func (r *gitlabResolver) fetchComponentSHA(component, ref string) (string, error
 		req.Header.Set("PRIVATE-TOKEN", r.token)
 	}
 
-	resp, err := r.client.Do(req)
+	resp, err := doWithRetry(r.client, req, 3)
 	if err != nil {
 		return "", err
 	}

@@ -24,9 +24,13 @@ type githubResolver struct {
 }
 
 func newGitHubResolver(token string) *githubResolver {
+	return newGitHubResolverWithClient(token, &http.Client{})
+}
+
+func newGitHubResolverWithClient(token string, client *http.Client) *githubResolver {
 	return &githubResolver{
 		token:  token,
-		client: &http.Client{},
+		client: client,
 		cache:  make(map[string]string),
 		docker: newDockerResolver(""),
 	}
@@ -114,7 +118,7 @@ func (r *githubResolver) fetchSHA(repo, ref string) (string, error) {
 		req.Header.Set("Authorization", bearerPrefix+r.token)
 	}
 
-	resp, err := r.client.Do(req)
+	resp, err := doWithRetry(r.client, req, 3)
 	if err != nil {
 		return "", err
 	}
@@ -147,7 +151,7 @@ func (r *githubResolver) fetchTagSHA(repo, tag string) (string, error) {
 		req.Header.Set("Authorization", bearerPrefix+r.token)
 	}
 
-	resp, err := r.client.Do(req)
+	resp, err := doWithRetry(r.client, req, 3)
 	if err != nil {
 		return "", err
 	}
@@ -186,7 +190,7 @@ func (r *githubResolver) fetchTagObjectSHA(url, token string) (string, error) {
 		req.Header.Set("Authorization", bearerPrefix+token)
 	}
 
-	resp, err := r.client.Do(req)
+	resp, err := doWithRetry(r.client, req, 3)
 	if err != nil {
 		return "", err
 	}

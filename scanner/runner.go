@@ -16,9 +16,10 @@ func Run(cfg Config) error {
 	providers := []provider.Provider{
 		newGitHubResolver(cfg.GitHubToken),
 		newGitLabResolver(cfg.GitLabHost, cfg.GitLabToken),
+		newCircleCIResolver(""),
 	}
 
-	files, err := findWorkflowFiles(cfg.Path, providers)
+	files, err := findWorkflowFiles(cfg.Path, providers, cfg.Exclude)
 	if err != nil {
 		return fmt.Errorf("scanning path: %w", err)
 	}
@@ -62,8 +63,9 @@ func Run(cfg Config) error {
 	return nil
 }
 
-// findWorkflowFiles returns all CI files matching any registered provider.
-func findWorkflowFiles(root string, providers []provider.Provider) ([]string, error) {
+// findWorkflowFiles returns all CI files matching any registered provider,
+// skipping any paths that match an exclude glob pattern.
+func findWorkflowFiles(root string, providers []provider.Provider, exclude []string) ([]string, error) {
 	var files []string
 
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -81,6 +83,10 @@ func findWorkflowFiles(root string, providers []provider.Provider) ([]string, er
 		rel, _ := filepath.Rel(root, path)
 		slashRel := filepath.ToSlash(rel)
 
+		if isExcluded(slashRel, exclude) {
+			return nil
+		}
+
 		for _, p := range providers {
 			if p.IsMatch(slashRel) {
 				files = append(files, path)
@@ -92,6 +98,22 @@ func findWorkflowFiles(root string, providers []provider.Provider) ([]string, er
 	})
 
 	return files, err
+}
+
+// isExcluded returns true if the relative path matches any of the exclude globs.
+func isExcluded(relPath string, patterns []string) bool {
+	for _, pattern := range patterns {
+		matched, err := filepath.Match(pattern, relPath)
+		if err == nil && matched {
+			return true
+		}
+		// Also match against just the filename for simple patterns like "*.yml"
+		matched, err = filepath.Match(pattern, filepath.Base(relPath))
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
 }
 
 // processFile resolves refs in a single file and writes it (or prints a diff in dry-run mode).

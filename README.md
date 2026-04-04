@@ -20,6 +20,7 @@ The tool scans recursively under `--path`, skipping `node_modules`, `.git`, `ven
 - **GitLab CI**:
   - `.gitlab-ci.yml` / `.gitlab-ci.yaml` / `.gitlab-ci-*.yml` at the root
   - Any `.yml`/`.yaml` file inside `.gitlab/` and its subdirectories
+- **CircleCI**: `.circleci/config.yml` / `.circleci/config.yaml`
 
 ## Installation
 
@@ -63,22 +64,28 @@ go build -o digestify-my-ci .
 
 ```sh
 # Dry run — show what would change, write nothing (default)
-pintosha --path ./myproject
+digestify-my-ci --path ./myproject
 
 # Apply changes
-pintosha --path ./myproject --dry-run=false
+digestify-my-ci --path ./myproject --dry-run=false
 
 # Only pin Docker images, leave action refs alone
-pintosha --path ./myproject --pin-actions=false
+digestify-my-ci --path ./myproject --pin-actions=false
 
 # Only pin GitHub/GitLab action refs, leave images alone
-pintosha --path ./myproject --pin-images=false
+digestify-my-ci --path ./myproject --pin-images=false
+
+# Exclude specific files (comma-separated globs)
+digestify-my-ci --path ./myproject --exclude ".github/workflows/generated.yml,*.skip.yml"
+
+# Use a config file
+digestify-my-ci --config .digestify.json
 
 # With API tokens (required to resolve unpinned action refs)
-pintosha --path ./myproject --github-token ghp_xxx --gitlab-token glpat_xxx
+digestify-my-ci --path ./myproject --github-token ghp_xxx --gitlab-token glpat_xxx
 
 # Self-hosted GitLab instance
-pintosha --path ./myproject --gitlab-host https://gitlab.mycompany.com --gitlab-token glpat_xxx
+digestify-my-ci --path ./myproject --gitlab-host https://gitlab.mycompany.com --gitlab-token glpat_xxx
 ```
 
 ## Flags
@@ -89,11 +96,31 @@ pintosha --path ./myproject --gitlab-host https://gitlab.mycompany.com --gitlab-
 | `--dry-run` | `true` | Show diff without writing files |
 | `--pin-actions` | `true` | Pin `uses:` and `component:` refs to SHAs |
 | `--pin-images` | `true` | Pin Docker `image:` tags to digests |
+| `--exclude` | — | Comma-separated glob patterns of files to skip |
+| `--config` | `.digestify.json` | Path to config file |
 | `--github-token` | `$GITHUB_TOKEN` | GitHub API token |
 | `--gitlab-token` | `$GITLAB_TOKEN` | GitLab API token |
 | `--gitlab-host` | `https://gitlab.com` | GitLab instance URL |
 
 Tokens can also be set via environment variables `GITHUB_TOKEN` and `GITLAB_TOKEN`.
+
+## Config file
+
+All flags can be set in a `.digestify.json` file at the root of your project. CLI flags always take precedence over the config file.
+
+```json
+{
+  "dry-run": false,
+  "pin-actions": true,
+  "pin-images": false,
+  "github-token": "ghp_...",
+  "gitlab-host": "https://gitlab.mycompany.com",
+  "exclude": [
+    ".github/workflows/generated.yml",
+    ".gitlab/auto-*.yml"
+  ]
+}
+```
 
 ## When do you need a token?
 
@@ -104,10 +131,14 @@ Tokens can also be set via environment variables `GITHUB_TOKEN` and `GITLAB_TOKE
 | Pinning GitLab components | Yes — calls the GitLab API to resolve refs |
 | Scanning already-pinned files | No — skipped immediately |
 
+## Rate limiting
+
+API calls to GitHub and GitLab are automatically retried on HTTP 429 (rate limited) or 503 responses. The retry delay is read from the `Retry-After` or `X-RateLimit-Reset` headers, falling back to 60 seconds. Up to 3 retries are attempted before giving up.
+
 ## What it can't do
 
 - **Private Docker registries** — only public registries (Docker Hub, GHCR, Quay.io, etc.) are supported
 - **`image:` inside a YAML map** — only the simple string form is handled (`image: name:tag`), not `image: { name: ..., tag: ... }`
 - **Branch refs** — pinning `uses: action@main` will resolve to the current SHA of `main`, which will become stale over time. Use tags when possible
 - **GitLab CI `extends:` or `!reference`** — template includes are not followed
-- **Monorepos with many workflow files** — all matching files are processed, but there is no filtering by file name yet
+- **CircleCI orbs** — orbs use semver versioning and have no SHA pinning API; only Docker `image:` tags inside CircleCI configs are pinned
