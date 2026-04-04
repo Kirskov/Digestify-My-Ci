@@ -21,6 +21,7 @@ The tool scans recursively under `--path`, skipping `node_modules`, `.git`, `ven
   - `.gitlab-ci.yml` / `.gitlab-ci.yaml` / `.gitlab-ci-*.yml` at the root
   - Any `.yml`/`.yaml` file inside `.gitlab/` and its subdirectories
 - **CircleCI**: `.circleci/config.yml` / `.circleci/config.yaml`
+- **Bitbucket Pipelines**: `bitbucket-pipelines.yml` / `bitbucket-pipelines.yaml`
 
 ## Installation
 
@@ -142,3 +143,4 @@ API calls to GitHub and GitLab are automatically retried on HTTP 429 (rate limit
 - **Branch refs** — pinning `uses: action@main` will resolve to the current SHA of `main`, which will become stale over time. Use tags when possible
 - **GitLab CI `extends:` or `!reference`** — template includes are not followed
 - **CircleCI orbs** — orbs use semver versioning and have no SHA pinning API; only Docker `image:` tags inside CircleCI configs are pinned
+- **Bitbucket Pipes** — pipes use semver versioning with no SHA pinning API; only Docker `image:` tags inside Bitbucket Pipelines configs are pinned

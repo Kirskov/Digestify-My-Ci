@@ -26,6 +26,7 @@ const (
 	manifestsPath       = "/manifests/"
 	dockerDigestHeader  = "Docker-Content-Digest"
 	wantDigestInOutput  = "expected digest in output, got:\n%s"
+	wantTagAsComment    = "expected original tag as comment, got:\n%s"
 	gitRefsTagsPath     = "/git/refs/tags/"
 	commitsPath         = "/commits/"
 )
@@ -143,13 +144,73 @@ func TestCircleCIPinsImages(t *testing.T) {
 		t.Errorf(wantDigestInOutput, got)
 	}
 	if !strings.Contains(got, "# 1.0.0") {
-		t.Errorf("expected original tag as comment, got:\n%s", got)
+		t.Errorf(wantTagAsComment, got)
 	}
 }
 
 func TestCircleCISkipsWhenPinImagesFalse(t *testing.T) {
 	p := newCircleCIResolver("")
 	content := "      image: myregistry.example.com/myimage:1.0.0\n"
+	got, err := p.Resolve(content, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != content {
+		t.Errorf("expected content unchanged when pinImages=false, got:\n%s", got)
+	}
+}
+
+// ── Bitbucket Pipelines ───────────────────────────────────────────────────────
+
+func TestIsBitbucketPipelines(t *testing.T) {
+	p := newBitbucketResolver()
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"bitbucket-pipelines.yml", true},
+		{"bitbucket-pipelines.yaml", true},
+		{"bitbucket-pipelines-other.yml", false},
+		{ghWorkflowCI, false},
+		{gitlabCIYML, false},
+	}
+	for _, c := range cases {
+		if got := p.IsMatch(c.path); got != c.want {
+			t.Errorf("Bitbucket IsMatch(%q) = %v, want %v", c.path, got, c.want)
+		}
+	}
+}
+
+func TestBitbucketPipelinesPinsImages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:bitbucket01")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	p := newBitbucketResolver()
+	p.setClient(&http.Client{Transport: rewriteHost(srv.URL)})
+
+	content := "      image: myregistry.example.com/myimage:3.0.0\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:bitbucket01") {
+		t.Errorf(wantDigestInOutput, got)
+	}
+	if !strings.Contains(got, "# 3.0.0") {
+		t.Errorf(wantTagAsComment, got)
+	}
+}
+
+func TestBitbucketPipelinesSkipsWhenPinImagesFalse(t *testing.T) {
+	p := newBitbucketResolver()
+	content := "      image: myregistry.example.com/myimage:3.0.0\n"
 	got, err := p.Resolve(content, false, false)
 	if err != nil {
 		t.Fatal(err)
@@ -300,7 +361,7 @@ func TestGitHubResolverPinImages(t *testing.T) {
 		t.Errorf(wantDigestInOutput, got)
 	}
 	if !strings.Contains(got, "# 1.2.3") {
-		t.Errorf("expected original tag as comment, got:\n%s", got)
+		t.Errorf(wantTagAsComment, got)
 	}
 }
 

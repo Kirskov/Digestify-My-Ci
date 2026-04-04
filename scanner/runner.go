@@ -17,6 +17,7 @@ func Run(cfg Config) error {
 		newGitHubResolver(cfg.GitHubToken),
 		newGitLabResolver(cfg.GitLabHost, cfg.GitLabToken),
 		newCircleCIResolver(""),
+		newBitbucketResolver(),
 	}
 
 	files, err := findWorkflowFiles(cfg.Path, providers, cfg.Exclude)
