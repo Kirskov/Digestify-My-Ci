@@ -62,11 +62,11 @@ go build -o digestify-my-ci .
 ## Usage
 
 ```sh
-# Dry run — show what would change, write nothing
-pintosha --path ./myproject --dry-run
+# Dry run — show what would change, write nothing (default)
+pintosha --path ./myproject
 
 # Apply changes
-pintosha --path ./myproject
+pintosha --path ./myproject --dry-run=false
 
 # Only pin Docker images, leave action refs alone
 pintosha --path ./myproject --pin-actions=false
@@ -86,7 +86,7 @@ pintosha --path ./myproject --gitlab-host https://gitlab.mycompany.com --gitlab-
 | Flag | Default | Description |
 |---|---|---|
 | `--path` | `.` | Path to the project to scan |
-| `--dry-run` | `false` | Show diff without writing files |
+| `--dry-run` | `true` | Show diff without writing files |
 | `--pin-actions` | `true` | Pin `uses:` and `component:` refs to SHAs |
 | `--pin-images` | `true` | Pin Docker `image:` tags to digests |
 | `--github-token` | `$GITHUB_TOKEN` | GitHub API token |
