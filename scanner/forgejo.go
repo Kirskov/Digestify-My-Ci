@@ -49,7 +49,24 @@ func (r *forgejoResolver) Resolve(content string, pinActions, pinImages bool) (s
 	if !pinActions {
 		return content, nil
 	}
+	r.warnIfDrifted(content)
 	return r.pinActions(content)
+}
+
+// warnIfDrifted checks already-pinned refs and warns if the SHA has changed.
+// The file is never modified — the user must fix it manually.
+func (r *forgejoResolver) warnIfDrifted(content string) {
+	for _, parts := range githubPinnedRegex.FindAllStringSubmatch(content, -1) {
+		action, pinnedSHA, tag := parts[1], parts[2], parts[3]
+		repoPath := actionRepoPath(action)
+		currentSHA, err := r.fetchSHA(repoPath, tag)
+		if err != nil {
+			continue
+		}
+		if currentSHA != pinnedSHA {
+			warnDrift("tag", action, tag, pinnedSHA, currentSHA)
+		}
+	}
 }
 
 func (r *forgejoResolver) pinActions(content string) (string, error) {

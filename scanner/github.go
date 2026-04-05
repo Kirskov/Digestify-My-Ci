@@ -27,7 +27,7 @@ type githubResolver struct {
 }
 
 func newGitHubResolver(token string) *githubResolver {
-	return newGitHubResolverWithClient(token, &http.Client{})
+	return newGitHubResolverWithClient(token, newHTTPClient())
 }
 
 func newGitHubResolverWithClient(token string, client *http.Client) *githubResolver {
@@ -201,6 +201,9 @@ func (r *githubResolver) fetchTagObjectSHA(url string) (string, error) {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", err
+	}
+	if result.Object.SHA == "" {
+		return "", fmt.Errorf("empty SHA returned for tag object")
 	}
 	return result.Object.SHA, nil
 }

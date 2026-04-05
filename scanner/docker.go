@@ -153,7 +153,9 @@ func (d *dockerResolver) fetchAuthToken(registryHost, repoPath string) (string, 
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", nil // non-fatal, try without token
+		// Non-fatal: registry may not use a token-based auth flow.
+		// Proceed without a token and let the manifest request fail if needed.
+		return "", nil
 	}
 	if result.Token != "" {
 		return result.Token, nil
