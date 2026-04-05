@@ -65,24 +65,7 @@ func (r *forgejoResolver) warnIfDrifted(content string) {
 }
 
 func (r *forgejoResolver) pinActions(content string) (string, error) {
-	var resolveErr error
-	result := replaceMatches(githubActionRegex, content, func(parts []string) (string, bool) {
-		if resolveErr != nil {
-			return "", false
-		}
-		prefix, action, ref := parts[1], parts[2], parts[3]
-		if isSHA(ref) {
-			return "", false
-		}
-		repoPath := actionRepoPath(action)
-		sha, err := r.cache.getOrSet(repoPath+"@"+ref, func() (string, error) { return r.fetchSHA(repoPath, ref) })
-		if err != nil {
-			resolveErr = fmt.Errorf("Forgejo: %s@%s: %w", repoPath, ref, err)
-			return "", false
-		}
-		return fmt.Sprintf("%s%s@%s # %s", prefix, action, sha, ref), true
-	})
-	return result, resolveErr
+	return (&actionPinner{name: "Forgejo", cache: r.cache, resolve: r.fetchSHA}).pin(content)
 }
 
 // fetchSHA tries tag first, then falls back to branch/commit.

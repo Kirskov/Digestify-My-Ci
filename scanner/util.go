@@ -87,6 +87,38 @@ func warnDrift(kind, ref, tag, pinnedSHA, currentSHA string) {
 		ansi(ansiBold), ansi(ansiYellow), ref, tag, kind, ansi(ansiReset), pinnedSHA, currentSHA)
 }
 
+// actionPinner pins `uses: owner/repo@tag` refs to their SHAs using a shared cache.
+// It is used by both the GitHub and Forgejo resolvers which share the same regex and
+// output format, differing only in their fetch function and error prefix.
+type actionPinner struct {
+	name    string // used in error messages, e.g. "GitHub", "Forgejo"
+	cache   syncCache
+	resolve func(repo, ref string) (string, error)
+}
+
+func (ap *actionPinner) pin(content string) (string, error) {
+	var resolveErr error
+	result := replaceMatches(githubActionRegex, content, func(parts []string) (string, bool) {
+		if resolveErr != nil {
+			return "", false
+		}
+		prefix, action, ref := parts[1], parts[2], parts[3]
+		if isSHA(ref) {
+			return "", false
+		}
+		repoPath := actionRepoPath(action)
+		sha, err := ap.cache.getOrSet(repoPath+"@"+ref, func() (string, error) {
+			return ap.resolve(repoPath, ref)
+		})
+		if err != nil {
+			resolveErr = fmt.Errorf("%s: %s@%s: %w", ap.name, repoPath, ref, err)
+			return "", false
+		}
+		return fmt.Sprintf("%s%s@%s # %s", prefix, action, sha, ref), true
+	})
+	return result, resolveErr
+}
+
 // driftChecker checks already-pinned refs for SHA drift.
 // Use checkAll to scan content for all matches of pinnedRegex and warn for any
 // whose current SHA no longer matches the pinned one.
