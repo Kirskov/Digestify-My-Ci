@@ -9,8 +9,8 @@ Pin floating tags in CI workflow files to immutable SHAs, making your pipelines 
 | GitHub Action | `uses: actions/checkout@v4` | `uses: actions/checkout@abc1234... # v4` |
 | Docker image | `image: maildev/maildev:2.2.1` | `image: maildev/maildev@sha256:180ef5... # 2.2.1` |
 | GitLab component | `component: gitlab.com/group/project/comp@v1` | `component: gitlab.com/group/project/comp@abc1234... # v1` |
-| GitLab TAG input | `TRIVY_TAG: aquasec/trivy:0.48.0` | `TRIVY_TAG: aquasec/trivy@sha256:eafae... # 0.48.0` |
-| GitLab TAG variable | `TRIVY_TAG: aquasec/trivy:0.48.0` | `TRIVY_TAG: aquasec/trivy@sha256:eafae... # 0.48.0` |
+| GitLab TAG input | `TRIVY_TAG: aquasec/trivy:0.69.3` | `TRIVY_TAG: aquasec/trivy@sha256:eafae... # 0.69.3` |
+| GitLab TAG variable | `TRIVY_TAG: aquasec/trivy:0.69.3` | `TRIVY_TAG: aquasec/trivy@sha256:eafae... # 0.69.3` |
 
 Already-pinned refs (SHA or digest) are left untouched.
 
