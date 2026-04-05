@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -29,6 +31,11 @@ jobs:
           GOOS=darwin  GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/digestify-my-ci-darwin-amd64  .
           GOOS=darwin  GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/digestify-my-ci-darwin-arm64  .
           GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/digestify-my-ci-windows-amd64.exe .
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@e8d6a90f0b083c87c491c2b24c4b2de6d0e5e33f # v2
+        with:
+          subject-path: dist/*
 
       - name: Generate checksums
         run: |
