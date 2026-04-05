@@ -22,8 +22,9 @@ const (
 	patternGLPinned   = `component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`
 	patternGLInputTag = `(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`
 
-	bearerPrefix = "Bearer "
-	maxRetries   = 3
+	bearerPrefix  = "Bearer "
+	maxRetries    = 3
+	httpTimeout   = 30 * time.Second
 )
 
 var shaRegex = regexp.MustCompile(patternSHA)
@@ -55,6 +56,11 @@ func (c *syncCache) getOrSet(key string, fetch func() (string, error)) (string, 
 		return "", err
 	}
 	c.mu.Lock()
+	// Check again under lock in case another goroutine raced us.
+	if existing, ok := c.items[key]; ok {
+		c.mu.Unlock()
+		return existing, nil
+	}
 	c.items[key] = v
 	c.mu.Unlock()
 	return v, nil
@@ -78,7 +84,7 @@ func replaceMatches(re *regexp.Regexp, content string, fn func(parts []string) (
 // warnDrift prints a warning when a pinned ref's SHA no longer matches.
 func warnDrift(kind, ref, tag, pinnedSHA, currentSHA string) {
 	fmt.Printf("%s%sWARNING: %s@%s has drifted — %s was mutated!%s\n  pinned:  %s\n  current: %s\n  → update this ref manually\n",
-		colorBold, colorYellow, ref, tag, kind, colorReset, pinnedSHA, currentSHA)
+		ansi(ansiBold), ansi(ansiYellow), ref, tag, kind, ansi(ansiReset), pinnedSHA, currentSHA)
 }
 
 // actionRepoPath extracts "owner/repo" from an action path like "owner/repo/subdir".
@@ -88,6 +94,11 @@ func actionRepoPath(action string) string {
 
 func mustCompile(pattern string) *regexp.Regexp {
 	return regexp.MustCompile(pattern)
+}
+
+// newHTTPClient returns an http.Client with a sensible default timeout.
+func newHTTPClient() *http.Client {
+	return &http.Client{Timeout: httpTimeout}
 }
 
 func isYAML(name string) bool {

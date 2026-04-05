@@ -27,7 +27,7 @@ func newForgejoResolver(host, token string) *forgejoResolver {
 	return &forgejoResolver{
 		host:   host,
 		token:  token,
-		client: &http.Client{},
+		client: newHTTPClient(),
 		cache:  newSyncCache(),
 		docker: newDockerResolver(""),
 	}

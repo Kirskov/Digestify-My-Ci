@@ -36,7 +36,7 @@ func newGitLabResolver(host, token string) *gitlabResolver {
 	return &gitlabResolver{
 		host:   host,
 		token:  token,
-		client: &http.Client{},
+		client: newHTTPClient(),
 		cache:  newSyncCache(),
 		docker: newDockerResolver(token),
 	}
@@ -162,13 +162,11 @@ func (r *gitlabResolver) Resolve(content string, pinActions, pinImages bool) (st
 		result = r.resolveComponentInputs(result)
 	}
 
-	if pinActions {
-		r.warnIfDrifted(content)
-	}
-
 	if !pinActions {
 		return result, nil
 	}
+
+	r.warnIfDrifted(content)
 
 	// Replace component: host/group/project/comp@tag → @sha
 	result = replaceMatches(gitlabComponentRegex, result, func(parts []string) (string, bool) {

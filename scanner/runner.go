@@ -253,33 +253,34 @@ func isTTY() bool {
 	return fi.Mode()&os.ModeCharDevice != 0
 }
 
-// color returns the ANSI escape code when stdout is a TTY, otherwise "".
-func color(code string) string {
+const (
+	ansiReset  = "\033[0m"
+	ansiRed    = "\033[31m"
+	ansiGreen  = "\033[32m"
+	ansiYellow = "\033[33m"
+	ansiCyan   = "\033[36m"
+	ansiBold   = "\033[1m"
+)
+
+// ansi returns the escape code only when stdout is a TTY.
+func ansi(code string) string {
 	if isTTY() {
 		return code
 	}
 	return ""
 }
 
-var (
-	colorReset  = color("\033[0m")
-	colorRed    = color("\033[31m")
-	colorGreen  = color("\033[32m")
-	colorYellow = color("\033[33m")
-	colorCyan   = color("\033[36m")
-	colorBold   = color("\033[1m")
-)
-
 // printDiff prints a colored unified-style diff of the changes.
 func printDiff(out io.Writer, path, original, updated string) {
-	fmt.Fprintf(out, "\n%s%s--- %s%s\n", colorBold, colorCyan, path, colorReset)
-	fmt.Fprintf(out, "%s%s+++ %s (pinned)%s\n", colorBold, colorCyan, path, colorReset)
+	reset := ansi(ansiReset)
+	fmt.Fprintf(out, "\n%s%s--- %s%s\n", ansi(ansiBold), ansi(ansiCyan), path, reset)
+	fmt.Fprintf(out, "%s%s+++ %s (pinned)%s\n", ansi(ansiBold), ansi(ansiCyan), path, reset)
 	diffLines(original, updated, func(o, u string) {
 		if o != "" {
-			fmt.Fprintf(out, "%s-%s%s\n", colorRed, o, colorReset)
+			fmt.Fprintf(out, "%s-%s%s\n", ansi(ansiRed), o, reset)
 		}
 		if u != "" {
-			fmt.Fprintf(out, "%s+%s%s\n", colorGreen, u, colorReset)
+			fmt.Fprintf(out, "%s+%s%s\n", ansi(ansiGreen), u, reset)
 		}
 	})
 }

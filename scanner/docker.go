@@ -31,7 +31,7 @@ type dockerResolver struct {
 
 func newDockerResolver(registryToken string) *dockerResolver {
 	return &dockerResolver{
-		client: &http.Client{},
+		client: newHTTPClient(),
 		token:  registryToken,
 		cache:  newSyncCache(),
 	}
