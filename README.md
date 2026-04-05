@@ -57,13 +57,13 @@ sudo mv digestify-my-ci /usr/local/bin/
 Images are published to GHCR and available for `linux/amd64` and `linux/arm64`. Always reference by digest, not tag:
 
 ```sh
-docker run --rm -v $(pwd):/repo ghcr.io/kirskov/digestify-my-ci@sha256:2018a811cb40e0261c36f5c1099ed177271a1580a5f7bc85ba781345c88c2b32 # v0.7.6 --path /repo
+docker run --rm -v $(pwd):/repo ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo
 ```
 
 Apply changes (disable dry-run):
 
 ```sh
-docker run --rm -v $(pwd):/repo ghcr.io/kirskov/digestify-my-ci@sha256:2018a811cb40e0261c36f5c1099ed177271a1580a5f7bc85ba781345c88c2b32 # v0.7.6 --path /repo --dry-run=false
+docker run --rm -v $(pwd):/repo ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo --dry-run=false
 ```
 
 With API tokens:
@@ -73,10 +73,21 @@ docker run --rm \
   -v $(pwd):/repo \
   -e GITHUB_TOKEN=ghp_xxx \
   -e GITLAB_TOKEN=glpat_xxx \
-  ghcr.io/kirskov/digestify-my-ci@sha256:2018a811cb40e0261c36f5c1099ed177271a1580a5f7bc85ba781345c88c2b32 # v0.7.6 --path /repo
+  ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo
 ```
 
 The digest for each release is listed on the [releases page](https://github.com/Kirskov/Digestify-My-Ci/releases). Update the digest when upgrading to a new version.
+
+#### Verify the image signature
+
+Images are signed with [cosign](https://github.com/sigstore/cosign) keyless signing via GitHub Actions OIDC. Verify before running:
+
+```sh
+cosign verify \
+  --certificate-identity "https://github.com/Kirskov/Digestify-My-Ci/.github/workflows/release.yml@refs/tags/v0.7.7" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7
+```
 
 ### Build from source
 
