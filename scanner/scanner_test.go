@@ -108,7 +108,7 @@ func TestIsCircleCI(t *testing.T) {
 		path string
 		want bool
 	}{
-		{".circleci/config.yml", true},
+		{circleciConfig, true},
 		{".circleci/config.yaml", true},
 		{".circleci/other.yml", false},
 		{ghWorkflowCI, false},
@@ -667,6 +667,60 @@ func TestGitLabResolverPinsImages(t *testing.T) {
 	}
 	if !strings.Contains(got, "sha256:gitlab01") {
 		t.Errorf(wantDigestInOutput, got)
+	}
+}
+
+func TestGitLabResolverPinsInputTAGKeys(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:trivydigest01")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	r := newGitLabResolver(gitlabCom, "")
+	r.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := `include:
+  - component: gitlab.com/group/project/trivy@v1.0
+    inputs:
+      TRIVY_TAG: myregistry.example.com/trivy:0.48.0
+      severity: HIGH
+`
+	got, err := r.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:trivydigest01") {
+		t.Errorf("expected digest in TRIVY_TAG value, got:\n%s", got)
+	}
+	if !strings.Contains(got, "# 0.48.0") {
+		t.Errorf("expected original tag as comment, got:\n%s", got)
+	}
+	// Non-TAG key must be untouched
+	if !strings.Contains(got, "severity: HIGH") {
+		t.Errorf("expected severity to be unchanged, got:\n%s", got)
+	}
+}
+
+func TestGitLabResolverSkipsNonTAGInputKeys(t *testing.T) {
+	r := newGitLabResolver(gitlabCom, "")
+	content := `include:
+  - component: gitlab.com/group/project/trivy@v1.0
+    inputs:
+      image: myregistry.example.com/trivy:0.48.0
+      version: 1.2.3
+`
+	got, err := r.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Neither key contains TAG — nothing should be pinned via input logic
+	if strings.Contains(got, "sha256:") {
+		t.Errorf("expected no digest in non-TAG inputs, got:\n%s", got)
 	}
 }
 

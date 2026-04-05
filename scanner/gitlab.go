@@ -7,11 +7,17 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 )
 
 // gitlabComponentRegex matches GitLab CI components:
 // `- component: gitlab.com/group/project/component@tag`
 var gitlabComponentRegex = regexp.MustCompile(`(component:\s+)([a-zA-Z0-9_.\-/]+)@([^\s#]+)`)
+
+// gitlabInputTagRegex matches an input key containing TAG with an image:tag value.
+// e.g. `      TRIVY_TAG: "aquasec/trivy:0.48.0"`
+var gitlabInputTagRegex = regexp.MustCompile(`(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`)
 
 // gitlabPinnedRegex matches already-pinned component refs: `component: path@sha # tag`
 var gitlabPinnedRegex = regexp.MustCompile(`component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`)
@@ -49,13 +55,73 @@ func (r *gitlabResolver) IsMatch(relPath string) bool {
 	return dir == ".gitlab" || strings.HasPrefix(dir, ".gitlab/") && isYAML(name)
 }
 
+// resolveComponentInputs pins image:tag values in inputs: blocks whose key
+// contains "TAG" (e.g. TRIVY_TAG, IMAGE_TAG). Uses yaml.v3 to identify which
+// keys are TAG inputs, then regex-replaces to preserve file formatting.
+func (r *gitlabResolver) resolveComponentInputs(content string) string {
+	tagKeys := collectTagInputKeys(content)
+	if len(tagKeys) == 0 {
+		return content
+	}
+	return gitlabInputTagRegex.ReplaceAllStringFunc(content, r.pinInputTagMatch(tagKeys))
+}
+
+// collectTagInputKeys parses the YAML and returns the set of input key names
+// that contain "TAG" and hold an unpinned image:tag value.
+func collectTagInputKeys(content string) map[string]bool {
+	var doc struct {
+		Include []struct {
+			Inputs map[string]string `yaml:"inputs"`
+		} `yaml:"include"`
+	}
+	if err := yaml.Unmarshal([]byte(content), &doc); err != nil {
+		return nil
+	}
+	keys := make(map[string]bool)
+	for _, inc := range doc.Include {
+		for key, val := range inc.Inputs {
+			if strings.Contains(strings.ToUpper(key), "TAG") && !isSHA(val) && strings.Contains(val, ":") {
+				keys[key] = true
+			}
+		}
+	}
+	return keys
+}
+
+// pinInputTagMatch returns a replacement function for gitlabInputTagRegex that
+// pins values whose key is in tagKeys.
+func (r *gitlabResolver) pinInputTagMatch(tagKeys map[string]bool) func(string) string {
+	return func(match string) string {
+		parts := gitlabInputTagRegex.FindStringSubmatch(match)
+		if len(parts) < 5 {
+			return match
+		}
+		prefix, image, tag := parts[1], parts[2], parts[3]
+		key := strings.TrimSpace(strings.SplitN(prefix, ":", 2)[0])
+
+		if !tagKeys[key] || isSHA(tag) || tag == "latest" {
+			return match
+		}
+
+		digest, err := r.docker.fetchDigest(image, tag)
+		if err != nil {
+			fmt.Printf("  warn: GitLab input %s (%s:%s): %v\n", key, image, tag, err)
+			return match
+		}
+
+		indent := prefix[:len(prefix)-len(strings.TrimLeft(prefix, " \t"))]
+		return fmt.Sprintf("%s%s: %s@%s # %s", indent, key, image, digest, tag)
+	}
+}
+
 // Resolve replaces image tags and/or component refs with their SHAs.
 func (r *gitlabResolver) Resolve(content string, pinActions, pinImages bool) (string, error) {
 	var resolveErr error
 
 	result := content
 	if pinImages {
-		result = r.docker.resolveImages(content)
+		result = r.docker.resolveImages(result)
+		result = r.resolveComponentInputs(result)
 	}
 
 	if pinActions {
