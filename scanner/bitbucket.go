@@ -14,8 +14,10 @@ func newBitbucketResolver() *bitbucketResolver {
 
 func (r *bitbucketResolver) Name() string { return "Bitbucket Pipelines" }
 
+const bitbucketPipelinesBase = "bitbucket-pipelines"
+
 func (r *bitbucketResolver) IsMatch(relPath string) bool {
-	return relPath == "bitbucket-pipelines.yml" || relPath == "bitbucket-pipelines.yaml"
+	return relPath == bitbucketPipelinesBase+".yml" || relPath == bitbucketPipelinesBase+".yaml"
 }
 
 // Resolve pins Docker image: tags found in Bitbucket Pipelines config files.

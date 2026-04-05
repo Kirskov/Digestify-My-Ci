@@ -92,10 +92,10 @@ latest_version() {
 
 install_deps
 
-VERSION="${VERSION:-$(latest_version)}"
+VERSION="$(latest_version)"
 
 if [ -z "$VERSION" ]; then
-  echo "Could not determine latest version. Set VERSION env var to install a specific version."
+  echo "Could not determine latest version."
   exit 1
 fi
 

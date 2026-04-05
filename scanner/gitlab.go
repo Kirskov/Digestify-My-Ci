@@ -4,23 +4,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	gitlabCIRootPrefix = ".gitlab-ci"
+	gitlabDir          = ".gitlab"
+)
+
 // gitlabComponentRegex matches GitLab CI components:
 // `- component: gitlab.com/group/project/component@tag`
-var gitlabComponentRegex = regexp.MustCompile(`(component:\s+)([a-zA-Z0-9_.\-/]+)@([^\s#]+)`)
+var gitlabComponentRegex = mustCompile(patternGLComponent)
 
 // gitlabInputTagRegex matches an input key containing TAG with an image:tag value.
-// e.g. `      TRIVY_TAG: "aquasec/trivy:0.48.0"`
-var gitlabInputTagRegex = regexp.MustCompile(`(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`)
+// e.g. `      TRIVY_TAG: "aquasec/trivy:0.69.3"`
+var gitlabInputTagRegex = mustCompile(patternGLInputTag)
 
 // gitlabPinnedRegex matches already-pinned component refs: `component: path@sha # tag`
-var gitlabPinnedRegex = regexp.MustCompile(`component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`)
+var gitlabPinnedRegex = mustCompile(patternGLPinned)
 
 type gitlabResolver struct {
 	host   string
@@ -47,12 +51,12 @@ func (r *gitlabResolver) IsMatch(relPath string) bool {
 	dir := slashDir(relPath)
 	name := slashBase(relPath)
 
-	if dir == "." && (name == ".gitlab-ci.yml" || name == ".gitlab-ci.yaml" ||
-		strings.HasPrefix(name, ".gitlab-ci-") && isYAML(name)) {
+	if dir == "." && (name == gitlabCIRootPrefix+".yml" || name == gitlabCIRootPrefix+".yaml" ||
+		strings.HasPrefix(name, gitlabCIRootPrefix+"-") && isYAML(name)) {
 		return true
 	}
 
-	return dir == ".gitlab" || strings.HasPrefix(dir, ".gitlab/") && isYAML(name)
+	return dir == gitlabDir || strings.HasPrefix(dir, gitlabDir+"/") && isYAML(name)
 }
 
 // resolveComponentInputs pins image:tag values in inputs: blocks whose key
@@ -68,24 +72,61 @@ func (r *gitlabResolver) resolveComponentInputs(content string) string {
 
 // collectTagInputKeys parses the YAML and returns the set of input key names
 // that contain "TAG" and hold an unpinned image:tag value.
+// It walks the entire document recursively so it catches variables: and inputs:
+// at any nesting level (top-level, inside jobs, inside include blocks, etc.).
 func collectTagInputKeys(content string) map[string]bool {
-	var doc struct {
-		Include []struct {
-			Inputs map[string]string `yaml:"inputs"`
-		} `yaml:"include"`
-	}
-	if err := yaml.Unmarshal([]byte(content), &doc); err != nil {
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(content), &root); err != nil || root.Kind == 0 {
 		return nil
 	}
 	keys := make(map[string]bool)
-	for _, inc := range doc.Include {
-		for key, val := range inc.Inputs {
-			if strings.Contains(strings.ToUpper(key), "TAG") && !isSHA(val) && strings.Contains(val, ":") {
-				keys[key] = true
+	walkTagMaps(&root, keys)
+	return keys
+}
+
+// walkTagMaps recursively walks a yaml.Node tree and collects keys that
+// contain "TAG" from any "variables" or "inputs" mapping node.
+func walkTagMaps(node *yaml.Node, keys map[string]bool) {
+	if node == nil {
+		return
+	}
+	if node.Kind == yaml.DocumentNode {
+		for _, child := range node.Content {
+			walkTagMaps(child, keys)
+		}
+		return
+	}
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			keyNode := node.Content[i]
+			valNode := node.Content[i+1]
+			if keyNode.Kind == yaml.ScalarNode &&
+				(keyNode.Value == "variables" || keyNode.Value == "inputs") &&
+				valNode.Kind == yaml.MappingNode {
+				collectTagKeysFromMap(valNode, keys)
 			}
+			// Recurse into all values regardless
+			walkTagMaps(valNode, keys)
+		}
+		return
+	}
+	if node.Kind == yaml.SequenceNode {
+		for _, child := range node.Content {
+			walkTagMaps(child, keys)
 		}
 	}
-	return keys
+}
+
+// collectTagKeysFromMap adds keys containing "TAG" with an image:tag value
+// from a mapping node into keys.
+func collectTagKeysFromMap(node *yaml.Node, keys map[string]bool) {
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		k := node.Content[i].Value
+		v := node.Content[i+1].Value
+		if strings.Contains(strings.ToUpper(k), "TAG") && !isSHA(v) && strings.Contains(v, ":") {
+			keys[k] = true
+		}
+	}
 }
 
 // pinInputTagMatch returns a replacement function for gitlabInputTagRegex that

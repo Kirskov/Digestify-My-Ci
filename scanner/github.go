@@ -4,19 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 )
 
-const githubJSONAccept = "application/vnd.github+json"
+const (
+	githubJSONAccept    = "application/vnd.github+json"
+	githubWorkflowsDir  = ".github/workflows"
+)
 
 // githubActionRegex matches `uses: owner/repo@ref` or `uses: owner/repo/subdir@ref`
 // and captures: full match, owner/repo[/subdir], ref
-var githubActionRegex = regexp.MustCompile(`(uses:\s+)([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([^\s#]+)`)
+var githubActionRegex = mustCompile(patternGHAction)
 
 // githubPinnedRegex matches already-pinned refs: `uses: action@sha # tag`
-var githubPinnedRegex = regexp.MustCompile(`uses:\s+([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([0-9a-f]{40})\s+#\s+(\S+)`)
+var githubPinnedRegex = mustCompile(patternGHPinned)
 
 type githubResolver struct {
 	token  string
@@ -43,7 +45,7 @@ func (r *githubResolver) Name() string { return "GitHub Actions" }
 
 func (r *githubResolver) IsMatch(relPath string) bool {
 	dir := slashDir(relPath)
-	return (dir == ".github/workflows" || strings.HasPrefix(dir, ".github/workflows/")) &&
+	return (dir == githubWorkflowsDir || strings.HasPrefix(dir, githubWorkflowsDir+"/")) &&
 		isYAML(slashBase(relPath))
 }
 

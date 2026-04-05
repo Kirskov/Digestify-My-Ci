@@ -10,7 +10,19 @@ import (
 	"time"
 )
 
-var shaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
+// Regex pattern constants — centralised so no pattern is duplicated across files.
+const (
+	patternSHA            = `^[0-9a-f]{40}$`
+	patternDockerImage    = `(image:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?)`
+	patternDockerPinned   = `image:\s+['"]?([a-zA-Z0-9_.\-/]+)@(sha256:[0-9a-f]+)['"]?\s+#\s+(\S+)`
+	patternGHAction       = `(uses:\s+)([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([^\s#]+)`
+	patternGHPinned       = `uses:\s+([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([0-9a-f]{40})\s+#\s+(\S+)`
+	patternGLComponent    = `(component:\s+)([a-zA-Z0-9_.\-/]+)@([^\s#]+)`
+	patternGLPinned       = `component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`
+	patternGLInputTag     = `(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`
+)
+
+var shaRegex = regexp.MustCompile(patternSHA)
 
 // isSHA returns true if the string looks like a full git SHA or docker digest.
 func isSHA(s string) bool {

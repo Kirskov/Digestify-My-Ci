@@ -15,20 +15,23 @@ import (
 )
 
 const (
-	ghWorkflowCI        = ".github/workflows/ci.yml"
-	ghWorkflowSkip      = ".github/workflows/skip.yml"
-	ghWorkflowDir       = "/.github/workflows"
-	ciYML               = "/ci.yml"
-	checkoutV4Line      = "      - uses: actions/checkout@v4\n"
-	testFakeSHA         = "aabbccdd11223344556677889900aabbccdd1100"
-	gitlabCom           = "https://gitlab.com"
-	gitlabCIYML         = ".gitlab-ci.yml"
-	manifestsPath       = "/manifests/"
-	dockerDigestHeader  = "Docker-Content-Digest"
-	wantDigestInOutput  = "expected digest in output, got:\n%s"
-	wantTagAsComment    = "expected original tag as comment, got:\n%s"
-	gitRefsTagsPath     = "/git/refs/tags/"
-	commitsPath         = "/commits/"
+	ghWorkflowCI       = ".github/workflows/ci.yml"
+	ghWorkflowSkip     = ".github/workflows/skip.yml"
+	ghWorkflowDir      = "/.github/workflows"
+	ciYML              = "/ci.yml"
+	checkoutV4Line     = "      - uses: actions/checkout@v4\n"
+	testFakeSHA        = "aabbccdd11223344556677889900aabbccdd1100"
+	gitlabCom          = "https://gitlab.com"
+	gitlabCIYML        = ".gitlab-ci.yml"
+	manifestsPath      = "/manifests/"
+	dockerDigestHeader = "Docker-Content-Digest"
+	wantDigestInOutput = "expected digest in output, got:\n%s"
+	wantTagAsComment   = "expected original tag as comment, got:\n%s"
+	wantSHAInOutput    = "expected SHA in output, got:\n%s"
+	gitRefsTagsPath    = "/git/refs/tags/"
+	commitsPath        = "/commits/"
+	trivyVersion        = "0.69.3"
+	wantTrivyTagComment = "# " + trivyVersion
 )
 
 // ── isSHA ────────────────────────────────────────────────────────────────────
@@ -38,12 +41,12 @@ func TestIsSHA(t *testing.T) {
 		input string
 		want  bool
 	}{
-		{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", true},  // 40 hex chars
-		{"0000000000000000000000000000000000000000", true},  // all zeros
-		{"sha256:abc123", true},                              // docker digest
-		{"v4", false},                                        // tag
-		{"main", false},                                      // branch
-		{"abc123", false},                                    // short sha
+		{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", true}, // 40 hex chars
+		{"0000000000000000000000000000000000000000", true}, // all zeros
+		{"sha256:abc123", true},                            // docker digest
+		{"v4", false},                                      // tag
+		{"main", false},                                    // branch
+		{"abc123", false},                                  // short sha
 		{"", false},
 	}
 	for _, c := range cases {
@@ -108,7 +111,7 @@ func TestIsCircleCI(t *testing.T) {
 		path string
 		want bool
 	}{
-		{circleciConfig, true},
+		{circleciConfigYML, true},
 		{".circleci/config.yaml", true},
 		{".circleci/other.yml", false},
 		{ghWorkflowCI, false},
@@ -157,6 +160,93 @@ func TestCircleCISkipsWhenPinImagesFalse(t *testing.T) {
 	}
 	if got != content {
 		t.Errorf("expected content unchanged when pinImages=false, got:\n%s", got)
+	}
+}
+
+// ── Forgejo Actions ───────────────────────────────────────────────────────────
+
+func TestIsForgejoActions(t *testing.T) {
+	p := newForgejoResolver("", "")
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{".forgejo/workflows/ci.yml", true},
+		{".forgejo/workflows/release.yaml", true},
+		{".forgejo/workflows/sub/deploy.yml", true},
+		{".forgejo/ci.yml", false},
+		{ghWorkflowCI, false},
+		{gitlabCIYML, false},
+	}
+	for _, c := range cases {
+		if got := p.IsMatch(c.path); got != c.want {
+			t.Errorf("Forgejo IsMatch(%q) = %v, want %v", c.path, got, c.want)
+		}
+	}
+}
+
+func newFakeForgejoServer(tagSHAs map[string]string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// GET /api/v1/repos/owner/repo/git/refs/tags/v1
+		if strings.Contains(r.URL.Path, gitRefsTagsPath) {
+			parts := strings.Split(r.URL.Path, gitRefsTagsPath)
+			tag := parts[1]
+			sha, ok := tagSHAs[tag]
+			if !ok {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			json.NewEncoder(w).Encode([]map[string]any{
+				{"object": map[string]string{"sha": sha}},
+			})
+			return
+		}
+		// GET /api/v1/repos/owner/repo/commits/ref (branch fallback)
+		if strings.Contains(r.URL.Path, commitsPath) {
+			parts := strings.Split(r.URL.Path, commitsPath)
+			ref := parts[1]
+			sha, ok := tagSHAs[ref]
+			if !ok {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]string{"sha": sha})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+}
+
+func TestForgejoResolverPinsActions(t *testing.T) {
+	srv := newFakeForgejoServer(map[string]string{"v1": testFakeSHA})
+	defer srv.Close()
+
+	r := newForgejoResolver(srv.URL, "")
+	content := "      - uses: actions/checkout@v1\n"
+	got, err := r.Resolve(content, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, testFakeSHA) {
+		t.Errorf(wantSHAInOutput, got)
+	}
+	if !strings.Contains(got, "# v1") {
+		t.Errorf(wantTagAsComment, got)
+	}
+}
+
+func TestForgejoResolverSkipsAlreadyPinned(t *testing.T) {
+	srv := newFakeForgejoServer(map[string]string{"v1": testFakeSHA})
+	defer srv.Close()
+
+	r := newForgejoResolver(srv.URL, "")
+	content := fmt.Sprintf("      - uses: actions/checkout@%s # v1\n", testFakeSHA)
+	got, err := r.Resolve(content, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != content {
+		t.Errorf("expected content unchanged, got:\n%s", got)
 	}
 }
 
@@ -630,7 +720,7 @@ func TestGitLabResolverPinsComponents(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(got, fakeSHA) {
-		t.Errorf("expected SHA in output, got:\n%s", got)
+		t.Errorf(wantSHAInOutput, got)
 	}
 	if !strings.Contains(got, "# v1.0") {
 		t.Errorf("expected original ref as comment, got:\n%s", got)
@@ -690,7 +780,7 @@ func TestGitLabResolverPinsInputTAGKeys(t *testing.T) {
 	content := `include:
   - component: gitlab.com/group/project/trivy@v1.0
     inputs:
-      TRIVY_TAG: myregistry.example.com/trivy:0.48.0
+      TRIVY_TAG: myregistry.example.com/trivy:0.69.3
       severity: HIGH
 `
 	got, err := r.Resolve(content, false, true)
@@ -700,8 +790,8 @@ func TestGitLabResolverPinsInputTAGKeys(t *testing.T) {
 	if !strings.Contains(got, "sha256:trivydigest01") {
 		t.Errorf("expected digest in TRIVY_TAG value, got:\n%s", got)
 	}
-	if !strings.Contains(got, "# 0.48.0") {
-		t.Errorf("expected original tag as comment, got:\n%s", got)
+	if !strings.Contains(got, wantTrivyTagComment) {
+		t.Errorf(wantTagAsComment, got)
 	}
 	// Non-TAG key must be untouched
 	if !strings.Contains(got, "severity: HIGH") {
@@ -725,7 +815,7 @@ func TestGitLabResolverSkipsNonTAGInputKeys(t *testing.T) {
 	content := `include:
   - component: gitlab.com/group/project/trivy@v1.0
     inputs:
-      IMAGE_NAME: myregistry.example.com/trivy:0.48.0
+      IMAGE_NAME: myregistry.example.com/trivy:0.69.3
       version: 1.2.3
 `
 	got, err := r.Resolve(content, false, true)
@@ -735,6 +825,73 @@ func TestGitLabResolverSkipsNonTAGInputKeys(t *testing.T) {
 	// IMAGE_NAME contains no TAG — nothing should be pinned via input logic
 	if strings.Contains(got, "sha256:") {
 		t.Errorf("expected no digest in non-TAG inputs, got:\n%s", got)
+	}
+}
+
+func TestGitLabResolverPinsJobVariablesTAGKeys(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:jobvardigest01")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	r := newGitLabResolver(gitlabCom, "")
+	r.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := `scan:
+  image: alpine:3.18
+  variables:
+    TRIVY_TAG: aquasec/trivy:0.69.3
+  script:
+    - echo hello
+`
+	got, err := r.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:jobvardigest01") {
+		t.Errorf("expected digest in job-level TRIVY_TAG variable, got:\n%s", got)
+	}
+	if !strings.Contains(got, wantTrivyTagComment) {
+		t.Errorf(wantTagAsComment, got)
+	}
+}
+
+func TestGitLabResolverPinsVariablesTAGKeys(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:vardigest01")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	r := newGitLabResolver(gitlabCom, "")
+	r.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := `variables:
+  TRIVY_TAG: myregistry.example.com/trivy:0.69.3
+  APP_VERSION: "1.2.3"
+`
+	got, err := r.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:vardigest01") {
+		t.Errorf("expected digest in TRIVY_TAG variable, got:\n%s", got)
+	}
+	if !strings.Contains(got, wantTrivyTagComment) {
+		t.Errorf(wantTagAsComment, got)
+	}
+	// Non-TAG key must be untouched
+	if !strings.Contains(got, `APP_VERSION: "1.2.3"`) {
+		t.Errorf("expected APP_VERSION to be unchanged, got:\n%s", got)
 	}
 }
 
@@ -763,7 +920,7 @@ func TestGitHubResolverFallsBackToBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(got, fakeSHA) {
-		t.Errorf("expected SHA in output, got:\n%s", got)
+		t.Errorf(wantSHAInOutput, got)
 	}
 }
 

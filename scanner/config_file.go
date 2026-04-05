@@ -11,14 +11,16 @@ const defaultConfigFile = ".digestify.json"
 // ConfigFile is the structure of a .digestify.json config file.
 // All fields are optional; CLI flags take precedence over file values.
 type ConfigFile struct {
-	Path        *string  `json:"path"`
-	DryRun      *bool    `json:"dry-run"`
-	GitHubToken *string  `json:"github-token"`
-	GitLabToken *string  `json:"gitlab-token"`
-	GitLabHost  *string  `json:"gitlab-host"`
-	PinActions  *bool    `json:"pin-actions"`
-	PinImages   *bool    `json:"pin-images"`
-	Exclude     []string `json:"exclude"`
+	Path         *string  `json:"path"`
+	DryRun       *bool    `json:"dry-run"`
+	GitHubToken  *string  `json:"github-token"`
+	GitLabToken  *string  `json:"gitlab-token"`
+	GitLabHost   *string  `json:"gitlab-host"`
+	ForgejoHost  *string  `json:"forgejo-host"`
+	ForgejoToken *string  `json:"forgejo-token"`
+	PinActions   *bool    `json:"pin-actions"`
+	PinImages    *bool    `json:"pin-images"`
+	Exclude      []string `json:"exclude"`
 }
 
 // LoadConfigFile reads a .digestify.json file from the given path.
@@ -55,6 +57,8 @@ func (f *ConfigFile) ApplyTo(cfg *Config, set map[string]bool) {
 	applyString(f.GitHubToken, &cfg.GitHubToken, set["github-token"])
 	applyString(f.GitLabToken, &cfg.GitLabToken, set["gitlab-token"])
 	applyString(f.GitLabHost, &cfg.GitLabHost, set["gitlab-host"])
+	applyString(f.ForgejoHost, &cfg.ForgejoHost, set["forgejo-host"])
+	applyString(f.ForgejoToken, &cfg.ForgejoToken, set["forgejo-token"])
 	applyBool(f.PinActions, &cfg.PinActions, set["pin-actions"])
 	applyBool(f.PinImages, &cfg.PinImages, set["pin-images"])
 	if len(f.Exclude) > 0 && !set["exclude"] {

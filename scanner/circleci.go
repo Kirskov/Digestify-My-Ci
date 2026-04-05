@@ -18,10 +18,13 @@ func newCircleCIResolver(registryToken string) *circleciResolver {
 
 func (r *circleciResolver) Name() string { return "CircleCI" }
 
-const circleciConfig = ".circleci/config.yml"
+const (
+	circleciConfigYML  = ".circleci/config.yml"
+	circleciConfigYAML = ".circleci/config.yaml"
+)
 
 func (r *circleciResolver) IsMatch(relPath string) bool {
-	return relPath == circleciConfig || relPath == ".circleci/config.yaml"
+	return relPath == circleciConfigYML || relPath == circleciConfigYAML
 }
 
 // Resolve pins Docker image: tags found in CircleCI config files.

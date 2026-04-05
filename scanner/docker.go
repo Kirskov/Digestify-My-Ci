@@ -10,10 +10,10 @@ import (
 // dockerImageRegex is shared between GitHub and GitLab scanners.
 // Matches `image: registry/name:tag` (with optional quotes).
 // Does not match digest refs (image@sha256:...) — those are already pinned.
-var dockerImageRegex = mustCompile(`(image:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?)`)
+var dockerImageRegex = mustCompile(patternDockerImage)
 
 // dockerPinnedRegex matches already-pinned `image: name@sha256:digest # tag`.
-var dockerPinnedRegex = mustCompile(`image:\s+['"]?([a-zA-Z0-9_.\-/]+)@(sha256:[0-9a-f]+)['"]?\s+#\s+(\S+)`)
+var dockerPinnedRegex = mustCompile(patternDockerPinned)
 
 type dockerResolver struct {
 	client *http.Client
