@@ -33,7 +33,7 @@ jobs:
           GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/digestify-my-ci-windows-amd64.exe .
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8d6a90f0b083c87c491c2b24c4b2de6d0e5e33f # v2
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: dist/*
 
