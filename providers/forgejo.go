@@ -16,7 +16,7 @@ type forgejoResolver struct {
 	host   string
 	token  string
 	client *http.Client
-	cache  syncCache
+	cache  *syncCache
 	docker *dockerResolver
 }
 
@@ -28,7 +28,7 @@ func NewForgejoResolver(host, token string) *forgejoResolver {
 		host:   host,
 		token:  token,
 		client: newHTTPClient(),
-		cache:  newSyncCache(),
+		cache:  newSyncCachePtr(),
 		docker: newDockerResolver(""),
 	}
 }

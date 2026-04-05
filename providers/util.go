@@ -71,6 +71,11 @@ func newSyncCache() syncCache {
 	return syncCache{items: make(map[string]string)}
 }
 
+func newSyncCachePtr() *syncCache {
+	c := newSyncCache()
+	return &c
+}
+
 func (c *syncCache) getOrSet(key string, fetch func() (string, error)) (string, error) {
 	c.mu.Lock()
 	v, ok := c.items[key]
@@ -119,7 +124,7 @@ func warnDrift(kind, ref, tag, pinnedSHA, currentSHA string) {
 // output format, differing only in their fetch function and error prefix.
 type actionPinner struct {
 	name    string // used in error messages, e.g. "GitHub", "Forgejo"
-	cache   syncCache
+	cache   *syncCache
 	resolve func(repo, ref string) (string, error)
 }
 

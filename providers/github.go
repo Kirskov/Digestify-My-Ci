@@ -22,7 +22,7 @@ var githubPinnedRegex = mustCompile(patternGHPinned)
 type githubResolver struct {
 	token  string
 	client *http.Client
-	cache  syncCache
+	cache  *syncCache
 	docker *dockerResolver
 }
 
@@ -34,7 +34,7 @@ func NewGitHubResolverWithClient(token string, client *http.Client) *githubResol
 	return &githubResolver{
 		token:  token,
 		client: client,
-		cache:  newSyncCache(),
+		cache:  newSyncCachePtr(),
 		docker: newDockerResolver(""),
 	}
 }
