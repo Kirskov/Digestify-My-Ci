@@ -53,7 +53,7 @@ func (r *gitlabResolver) IsMatch(relPath string) bool {
 		return true
 	}
 
-	return dir == gitlabDir || strings.HasPrefix(dir, gitlabDir+"/") && isYAML(name)
+	return (dir == gitlabDir || strings.HasPrefix(dir, gitlabDir+"/")) && isYAML(name)
 }
 
 // resolveComponentInputs pins image:tag values in inputs: blocks whose key
