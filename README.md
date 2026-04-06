@@ -1,4 +1,4 @@
-# shapin
+# Shapin
 
 Pin floating tags in CI workflow files to immutable SHAs, making your pipelines reproducible and immune to tag mutation attacks.
 
