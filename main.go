@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"pintosha/providers"
-	"pintosha/scanner"
+	"shapin/providers"
+	"shapin/scanner"
 )
 
 // Version, Commit and Date are set at build time via ldflags.

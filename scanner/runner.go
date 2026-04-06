@@ -8,8 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"pintosha/contract"
-	"pintosha/providers"
+	"shapin/contract"
+	"shapin/providers"
 )
 
 const (

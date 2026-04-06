@@ -1,4 +1,4 @@
-module pintosha
+module shapin
 
 go 1.25.8
 

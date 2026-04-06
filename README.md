@@ -1,4 +1,4 @@
-# pintosha
+# shapin
 
 Pin floating tags in CI workflow files to immutable SHAs, making your pipelines reproducible and immune to tag mutation attacks.
 
@@ -37,7 +37,7 @@ The tool scans recursively under `--path`, skipping `node_modules`, `.git`, `ven
 ### One-liner (Linux / macOS)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Kirskov/Digestify-My-Ci/9363d8f000ec543c33be11fff5b0092b23e9d55d/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Kirskov/Shapin/9363d8f000ec543c33be11fff5b0092b23e9d55d/install.sh | sh
 ```
 
 The script URL is pinned to a commit SHA so the install script itself cannot be tampered with. Supports Ubuntu, Debian, Kali, Arch, Alpine, Red Hat, Fedora, and macOS. The script will automatically detect your OS and architecture, download the correct binary, and install it to `/usr/local/bin`.
@@ -48,14 +48,14 @@ To install a specific version, use the [Manual](#manual) method below.
 
 All releases are [immutable](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#immutable-releases) — the Git tag, commit SHA, and release assets are locked and cannot be modified or deleted after publication.
 
-Download the binary for your platform from the [releases page](https://github.com/Kirskov/Digestify-My-Ci/releases), verify the release attestation, and move it to your PATH:
+Download the binary for your platform from the [releases page](https://github.com/Kirskov/Shapin/releases), verify the release attestation, and move it to your PATH:
 
 ```sh
 # Example for Linux amd64
-curl -fsSL https://github.com/Kirskov/Digestify-My-Ci/releases/download/v0.6.3/digestify-my-ci-linux-amd64 -o digestify-my-ci
-gh attestation verify digestify-my-ci --repo Kirskov/Digestify-My-Ci
-chmod +x digestify-my-ci
-sudo mv digestify-my-ci /usr/local/bin/
+curl -fsSL https://github.com/Kirskov/Shapin/releases/download/v0.6.3/shapin-linux-amd64 -o shapin
+gh attestation verify shapin --repo Kirskov/Shapin
+chmod +x shapin
+sudo mv shapin /usr/local/bin/
 ```
 
 ### Docker
@@ -63,13 +63,13 @@ sudo mv digestify-my-ci /usr/local/bin/
 Images are published to GHCR and available for `linux/amd64` and `linux/arm64`. Always reference by digest, not tag:
 
 ```sh
-docker run --rm -v $(pwd):/repo ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo
+docker run --rm -v $(pwd):/repo ghcr.io/kirskov/shapin@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo
 ```
 
 Apply changes (disable dry-run):
 
 ```sh
-docker run --rm -v $(pwd):/repo ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo --dry-run=false
+docker run --rm -v $(pwd):/repo ghcr.io/kirskov/shapin@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo --dry-run=false
 ```
 
 With API tokens:
@@ -79,10 +79,10 @@ docker run --rm \
   -v $(pwd):/repo \
   -e GITHUB_TOKEN=ghp_xxx \
   -e GITLAB_TOKEN=glpat_xxx \
-  ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo
+  ghcr.io/kirskov/shapin@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7 --path /repo
 ```
 
-The digest for each release is listed on the [releases page](https://github.com/Kirskov/Digestify-My-Ci/releases). Update the digest when upgrading to a new version.
+The digest for each release is listed on the [releases page](https://github.com/Kirskov/Shapin/releases). Update the digest when upgrading to a new version.
 
 #### Verify the image signature
 
@@ -90,45 +90,45 @@ Images are signed with [cosign](https://github.com/sigstore/cosign) keyless sign
 
 ```sh
 cosign verify \
-  --certificate-identity "https://github.com/Kirskov/Digestify-My-Ci/.github/workflows/release.yml@refs/tags/v0.7.7" \
+  --certificate-identity "https://github.com/Kirskov/Shapin/.github/workflows/release.yml@refs/tags/v0.7.7" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/kirskov/digestify-my-ci@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7
+  ghcr.io/kirskov/shapin@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7
 ```
 
 ### Build from source
 
 ```sh
-git clone https://github.com/Kirskov/Digestify-My-Ci.git
-cd Digestify-My-Ci
-go build -o digestify-my-ci .
+git clone https://github.com/Kirskov/Shapin.git
+cd Shapin
+go build -o shapin .
 ```
 
 ## Usage
 
 ```sh
 # Dry run — show what would change, write nothing (default)
-digestify-my-ci --path ./myproject
+shapin --path ./myproject
 
 # Apply changes
-digestify-my-ci --path ./myproject --dry-run=false
+shapin --path ./myproject --dry-run=false
 
 # Only pin Docker images, leave action refs alone
-digestify-my-ci --path ./myproject --pin-actions=false
+shapin --path ./myproject --pin-actions=false
 
 # Only pin GitHub/GitLab action refs, leave images alone
-digestify-my-ci --path ./myproject --pin-images=false
+shapin --path ./myproject --pin-images=false
 
 # Exclude specific files (comma-separated globs)
-digestify-my-ci --path ./myproject --exclude ".github/workflows/generated.yml,*.skip.yml"
+shapin --path ./myproject --exclude ".github/workflows/generated.yml,*.skip.yml"
 
 # Use a config file
-digestify-my-ci --config .digestify.json
+shapin --config .digestify.json
 
 # With API tokens (required to resolve unpinned action refs)
-digestify-my-ci --path ./myproject --github-token ghp_xxx --gitlab-token glpat_xxx
+shapin --path ./myproject --github-token ghp_xxx --gitlab-token glpat_xxx
 
 # Self-hosted GitLab instance
-digestify-my-ci --path ./myproject --gitlab-host https://gitlab.mycompany.com --gitlab-token glpat_xxx
+shapin --path ./myproject --gitlab-host https://gitlab.mycompany.com --gitlab-token glpat_xxx
 ```
 
 ## Flags

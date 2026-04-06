@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-REPO="Kirskov/Digestify-My-Ci"
-BINARY="digestify-my-ci"
+REPO="Kirskov/Shapin"
+BINARY="shapin"
 INSTALL_DIR="/usr/local/bin"
 
 # ── Detect OS and arch ───────────────────────────────────────────────────────

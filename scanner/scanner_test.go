@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"pintosha/contract"
-	"pintosha/providers"
+	"shapin/contract"
+	"shapin/providers"
 )
 
 const (

@@ -30,14 +30,14 @@ jobs:
           COMMIT=$(git rev-parse --short HEAD)
           DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%dT%H:%M')
           LDFLAGS="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.Date=${DATE}"
-          GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/digestify-my-ci-linux-amd64   .
-          GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/digestify-my-ci-linux-arm64   .
-          GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/digestify-my-ci-darwin-amd64  .
-          GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/digestify-my-ci-darwin-arm64  .
-          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/digestify-my-ci-windows-amd64.exe .
-          upx --best dist/digestify-my-ci-linux-amd64
-          upx --best dist/digestify-my-ci-linux-arm64
-          upx --best dist/digestify-my-ci-windows-amd64.exe
+          GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-linux-amd64   .
+          GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-linux-arm64   .
+          GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-darwin-amd64  .
+          GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-darwin-arm64  .
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-windows-amd64.exe .
+          upx --best dist/shapin-linux-amd64
+          upx --best dist/shapin-linux-arm64
+          upx --best dist/shapin-windows-amd64.exe
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set image name
-        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/digestify-my-ci" >> "$GITHUB_ENV"
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/shapin" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
