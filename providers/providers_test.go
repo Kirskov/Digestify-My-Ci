@@ -119,7 +119,7 @@ func TestIsCircleCI(t *testing.T) {
 		path string
 		want bool
 	}{
-		{".circleci/config.yml", true},
+		{circleciConfigYML, true},
 		{".circleci/config.yaml", true},
 		{".circleci/other.yml", false},
 		{ghWorkflowCI, false},
