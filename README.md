@@ -25,6 +25,9 @@ The tool scans recursively under `--path`, skipping `node_modules`, `.git`, `ven
 - **CircleCI**: `.circleci/config.yml` / `.circleci/config.yaml`
 - **Bitbucket Pipelines**: `bitbucket-pipelines.yml` / `bitbucket-pipelines.yaml`
 - **Forgejo Actions**: any `.yml`/`.yaml` file inside `.forgejo/workflows/` (and subdirectories)
+- **Woodpecker CI**:
+  - `.woodpecker.yml` / `.woodpecker.yaml` at the root
+  - Any `.yml`/`.yaml` file inside `.woodpecker/` and its subdirectories
 
 ## Installation
 
@@ -198,3 +201,4 @@ include:
 - **GitLab CI `extends:` or `!reference`** — template includes are not followed
 - **CircleCI orbs** — orbs use semver versioning and have no SHA pinning API; only Docker `image:` tags inside CircleCI configs are pinned
 - **Bitbucket Pipes** — pipes use semver versioning with no SHA pinning API; only Docker `image:` tags inside Bitbucket Pipelines configs are pinned
+- **Woodpecker CI plugins** — Woodpecker plugin steps (`image:`) are pinned, but the Woodpecker plugin registry has no SHA pinning API; only Docker `image:` tags are pinned
