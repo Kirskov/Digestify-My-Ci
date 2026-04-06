@@ -2,11 +2,12 @@ package providers
 
 import "strings"
 
-const (
-	woodpeckerYML  = ".woodpecker.yml"
-	woodpeckerYAML = ".woodpecker.yaml"
-	woodpeckerDir  = ".woodpecker"
-)
+const woodpeckerDir = ".woodpecker"
+
+var woodpeckerRootFiles = []string{
+	".woodpecker.yml",
+	".woodpecker.yaml",
+}
 
 // NewWoodpeckerResolver returns a provider for Woodpecker CI config files:
 //   - .woodpecker.yml / .woodpecker.yaml at the repo root
@@ -15,7 +16,7 @@ func NewWoodpeckerResolver() *imageOnlyResolver {
 	return &imageOnlyResolver{
 		providerName: "Woodpecker CI",
 		matcher: func(p string) bool {
-			if p == woodpeckerYML || p == woodpeckerYAML {
+			if matchesAny(p, woodpeckerRootFiles) {
 				return true
 			}
 			dir := slashDir(p)

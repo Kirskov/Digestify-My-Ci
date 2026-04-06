@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	dockerfileFromRegex   = mustCompile(patternFromLine)
-	dockerfileFromPinned  = mustCompile(patternFromPinned)
+	dockerfileFromRegex  = mustCompile(patternFromLine)
+	dockerfileFromPinned = mustCompile(patternFromPinned)
 )
 
 type dockerfileResolver struct {

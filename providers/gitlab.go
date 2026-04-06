@@ -13,6 +13,11 @@ const (
 	gitlabDir          = ".gitlab"
 )
 
+var gitlabCIRootFiles = []string{
+	gitlabCIRootPrefix + ".yml",
+	gitlabCIRootPrefix + ".yaml",
+}
+
 // gitlabComponentRegex matches GitLab CI components:
 // `- component: gitlab.com/group/project/component@tag`
 var gitlabComponentRegex = mustCompile(patternGLComponent)
@@ -48,7 +53,7 @@ func (r *gitlabResolver) IsMatch(relPath string) bool {
 	dir := slashDir(relPath)
 	name := slashBase(relPath)
 
-	if dir == "." && (name == gitlabCIRootPrefix+".yml" || name == gitlabCIRootPrefix+".yaml" ||
+	if dir == "." && (matchesAny(name, gitlabCIRootFiles) ||
 		strings.HasPrefix(name, gitlabCIRootPrefix+"-") && isYAML(name)) {
 		return true
 	}

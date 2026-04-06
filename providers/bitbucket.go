@@ -1,19 +1,14 @@
 package providers
 
-const (
-	bitbucketPipelinesYML  = "bitbucket-pipelines.yml"
-	bitbucketPipelinesYAML = "bitbucket-pipelines.yaml"
-)
+var bitbucketConfigs = []string{
+	"bitbucket-pipelines.yml",
+	"bitbucket-pipelines.yaml",
+}
 
 func NewBitbucketResolver() *imageOnlyResolver {
 	return &imageOnlyResolver{
 		providerName: "Bitbucket Pipelines",
-		matcher: func(p string) bool {
-			return matchesAny(slashBase(p),
-				bitbucketPipelinesYML,
-				bitbucketPipelinesYAML,
-			)
-		},
-		docker: newDockerResolver(""),
+		matcher:      func(p string) bool { return matchesAny(slashBase(p), bitbucketConfigs) },
+		docker:       newDockerResolver(""),
 	}
 }

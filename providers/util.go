@@ -200,7 +200,7 @@ func newHTTPClient() *http.Client {
 }
 
 // matchesAny returns true if s equals any element in the list.
-func matchesAny(s string, list ...string) bool {
+func matchesAny(s string, list []string) bool {
 	for _, v := range list {
 		if s == v {
 			return true

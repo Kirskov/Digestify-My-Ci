@@ -1,19 +1,14 @@
 package providers
 
-const (
-	circleciConfigYML  = ".circleci/config.yml"
-	circleciConfigYAML = ".circleci/config.yaml"
-)
+var circleciConfigs = []string{
+	".circleci/config.yml",
+	".circleci/config.yaml",
+}
 
 func NewCircleCIResolver(registryToken string) *imageOnlyResolver {
 	return &imageOnlyResolver{
 		providerName: "CircleCI",
-		matcher: func(p string) bool {
-			return matchesAny(p,
-				circleciConfigYML,
-				circleciConfigYAML,
-			)
-		},
-		docker: newDockerResolver(registryToken),
+		matcher:      func(p string) bool { return matchesAny(p, circleciConfigs) },
+		docker:       newDockerResolver(registryToken),
 	}
 }
