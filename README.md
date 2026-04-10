@@ -133,6 +133,30 @@ shapin --path ./myproject --github-token ghp_xxx --gitlab-token glpat_xxx
 shapin --path ./myproject --gitlab-host https://gitlab.mycompany.com --gitlab-token glpat_xxx
 ```
 
+## Upgrading pinned refs
+
+To upgrade a pinned ref to a newer version, update it and rerun `shapin`.
+
+**Action / component refs** — change the SHA back to the new tag:
+
+```yaml
+# before (pinned)
+- uses: actions/checkout@abc1234... # v4
+# edit to
+- uses: actions/checkout@v5
+```
+
+**Version variables** — just set the new version directly in the `_DIGEST` key:
+
+```yaml
+# before (pinned)
+TF_DIGEST: "sha256:6bbb82... # 1.14.8"
+# edit to
+TF_DIGEST: "1.15.0"
+```
+
+Then rerun `shapin --path .` to resolve the new digest.
+
 ## Flags
 
 | Flag | Default | Description |

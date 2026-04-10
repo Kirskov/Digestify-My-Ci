@@ -199,6 +199,26 @@ func TestGitLabSkipsVersionInputAlreadyDigest(t *testing.T) {
 	}
 }
 
+func TestGitLabRepinsDigestKeyWithBareVersion(t *testing.T) {
+	// TF_DIGEST: "1.14.8" (bare version, not yet a digest) should be re-pinned
+	// to TF_DIGEST: "sha256:... # 1.14.8" — this is the upgrade workflow.
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	content := "  TF_DIGEST: \"1.14.8\"\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:") {
+		t.Errorf("expected TF_DIGEST bare version to be pinned, got:\n%s", got)
+	}
+	if !strings.Contains(got, "# 1.14.8") {
+		t.Errorf("expected original version in comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "TF_DIGEST:") {
+		t.Errorf("expected key to remain TF_DIGEST, got:\n%s", got)
+	}
+}
+
 func TestExtractStem(t *testing.T) {
 	cases := []struct {
 		key  string
