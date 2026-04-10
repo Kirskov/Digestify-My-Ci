@@ -95,11 +95,19 @@ func TestIsGitLabCI(t *testing.T) {
 		path string
 		want bool
 	}{
+		// root-level files
 		{gitlabCIYML, true},
 		{".gitlab-ci.yaml", true},
 		{".gitlab-ci-build.yml", true},
 		{".gitlab/ci.yml", true},
 		{".gitlab/templates/deploy.yaml", true},
+		// monorepo: project subdirectory
+		{"my-service/.gitlab-ci.yml", true},
+		{"my-service/.gitlab-ci.yaml", true},
+		{"my-service/.gitlab-ci-build.yml", true},
+		{"my-service/.gitlab/logic.yml", true},
+		{"my-service/.gitlab/templates/deploy.yaml", true},
+		// non-matches
 		{ghWorkflowCI, false},
 		{"src/gitlab.yml", false},
 		{"ci.yml", false},

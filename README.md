@@ -20,8 +20,8 @@ The tool scans recursively under `--path`, skipping `node_modules`, `.git`, `ven
 
 - **GitHub Actions**: any `.yml`/`.yaml` file inside `.github/workflows/` (and subdirectories)
 - **GitLab CI**:
-  - `.gitlab-ci.yml` / `.gitlab-ci.yaml` / `.gitlab-ci-*.yml` at the root
-  - Any `.yml`/`.yaml` file inside `.gitlab/` and its subdirectories
+  - `.gitlab-ci.yml` / `.gitlab-ci.yaml` / `.gitlab-ci-*.yml` at any depth (supports monorepos where each subdirectory is its own project)
+  - Any `.yml`/`.yaml` file inside `.gitlab/` and its subdirectories, at any depth
 - **CircleCI**: `.circleci/config.yml` / `.circleci/config.yaml`
 - **Bitbucket Pipelines**: `bitbucket-pipelines.yml` / `bitbucket-pipelines.yaml`
 - **Forgejo Actions**: any `.yml`/`.yaml` file inside `.forgejo/workflows/` (and subdirectories)

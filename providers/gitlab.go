@@ -46,12 +46,18 @@ func (r *gitlabResolver) IsMatch(relPath string) bool {
 	dir := slashDir(relPath)
 	name := slashBase(relPath)
 
-	if dir == "." && (matchesAny(name, gitlabCIRootFiles) ||
-		strings.HasPrefix(name, gitlabCIRootPrefix+"-") && isYAML(name)) {
+	// Match .gitlab-ci.yml / .gitlab-ci.yaml / .gitlab-ci-*.yml at any directory
+	// level, not just the scan root — supports monorepos where each subdirectory
+	// is its own project.
+	if matchesAny(name, gitlabCIRootFiles) ||
+		strings.HasPrefix(name, gitlabCIRootPrefix+"-") && isYAML(name) {
 		return true
 	}
 
-	return (dir == gitlabDir || strings.HasPrefix(dir, gitlabDir+"/")) && isYAML(name)
+	// Match any .yml/.yaml inside a .gitlab/ directory at any depth.
+	return (dir == gitlabDir || strings.HasPrefix(dir, gitlabDir+"/") ||
+		strings.Contains(dir, "/"+gitlabDir+"/") ||
+		strings.HasSuffix(dir, "/"+gitlabDir)) && isYAML(name)
 }
 
 // resolveComponentInputs pins image:tag values in inputs: blocks whose key
