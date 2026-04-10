@@ -1,5 +1,7 @@
 # Shapin
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/Kirskov/Shapin.svg)](https://pkg.go.dev/github.com/Kirskov/Shapin)
+
 Pin floating tags in CI workflow files to immutable SHAs, making your pipelines reproducible and immune to tag mutation attacks.
 
 ## Table of contents
