@@ -7,12 +7,15 @@ Pin floating tags in CI workflow files to immutable SHAs, making your pipelines 
 | Reference type | Before | After |
 |---|---|---|
 | GitHub Action | `uses: actions/checkout@v4` | `uses: actions/checkout@abc1234... # v4` |
+| Forgejo Action | `uses: actions/checkout@v1` | `uses: actions/checkout@abc1234... # v1` |
 | Docker image (`image:`) | `image: maildev/maildev:2.2.1` | `image: maildev/maildev@sha256:180ef5... # 2.2.1` |
 | Dockerfile `FROM` | `FROM golang:1.24-alpine AS builder` | `FROM golang@sha256:8bee19... # 1.24-alpine AS builder` |
-| GitLab `image:tag` input | `TRIVY_TAG: aquasec/trivy:0.69.3` | `TRIVY_TAG: aquasec/trivy@sha256:eafae... # 0.69.3` |
-| GitLab bare version input | `TF_VERSION: "1.14.8"` | `TF_VERSION: "sha256:6bbb82... # 1.14.8"` |
+| GitLab component ref | `component: gitlab.com/group/proj/name@v1.0.0` | `component: gitlab.com/group/proj/name@abc1234... # v1.0.0` |
+| GitLab `image:tag` variable | `TRIVY_TAG: aquasec/trivy:0.69.3` | `TRIVY_TAG: aquasec/trivy@sha256:eafae... # 0.69.3` |
+| GitLab bare version variable | `TF_VERSION: "1.14.8"` | `TF_DIGEST: "sha256:6bbb82... # 1.14.8"` |
+| GitLab trigger input | `TF_VERSION: "1.14.8"` (under `inputs:`) | `TF_DIGEST: "sha256:6bbb82... # 1.14.8"` |
 
-Already-pinned refs (SHA or digest) are left untouched.
+Already-pinned refs and digests are left untouched. Every provider checks pinned SHAs against their current tag — a warning is printed if the tag has been moved to a different commit (drift detection).
 
 ## Supported files
 
@@ -36,7 +39,7 @@ The tool scans recursively under `--path`, skipping `node_modules`, `.git`, `ven
 ### One-liner (Linux / macOS)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Kirskov/Shapin/9363d8f000ec543c33be11fff5b0092b23e9d55d/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Kirskov/Shapin/18d784ba2b0ea6009c4abcce82afee49e09a554f/install.sh | sh
 ```
 
 The script URL is pinned to a commit SHA so the install script itself cannot be tampered with. Supports Ubuntu, Debian, Kali, Arch, Alpine, Red Hat, Fedora, and macOS. The script will automatically detect your OS and architecture, download the correct binary, and install it to `/usr/local/bin`.
