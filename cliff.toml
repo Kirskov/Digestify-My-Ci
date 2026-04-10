@@ -24,6 +24,8 @@ commit_parsers = [
   { message = "^docs", group = "Documentation" },
   { message = "^test", group = "Tests" },
   { message = "^chore", group = "Chores" },
+  { message = "^style", group = "Style" },
+  { message = "^ci", group = "CI" },
   { message = "^rename", skip = true },
 ]
 filter_commits = true
