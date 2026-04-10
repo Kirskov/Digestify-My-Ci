@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"shapin/internal/contract"
-	"shapin/internal/providers"
+	"github.com/Kirskov/Shapin/internal/contract"
+	"github.com/Kirskov/Shapin/internal/providers"
 )
 
 const (

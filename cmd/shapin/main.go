@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"shapin/internal/providers"
-	"shapin/internal/scanner"
+	"github.com/Kirskov/Shapin/internal/providers"
+	"github.com/Kirskov/Shapin/internal/scanner"
 )
 
 func init() {

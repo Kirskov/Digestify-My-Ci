@@ -1,4 +1,4 @@
-module shapin
+module github.com/Kirskov/Shapin
 
 go 1.25.8
 
