@@ -12,7 +12,7 @@ ARG DATE=unknown
 RUN CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags "-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.Date=${DATE}" \
-    -o /shapin .
+    -o /shapin ./cmd/shapin
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

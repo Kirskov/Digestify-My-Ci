@@ -128,7 +128,7 @@ cosign verify \
 ```sh
 git clone https://github.com/Kirskov/Shapin.git
 cd Shapin
-go build -o shapin .
+go build -o shapin ./cmd/shapin
 ```
 
 ## Usage

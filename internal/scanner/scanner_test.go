@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"shapin/contract"
-	"shapin/providers"
+	"shapin/internal/contract"
+	"shapin/internal/providers"
 )
 
 const (
