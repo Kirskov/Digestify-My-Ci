@@ -198,6 +198,19 @@ func replaceMatches(re *regexp.Regexp, content string, fn func(parts []string) (
 	})
 }
 
+// unstableBranches are well-known branch names that should never be pinned —
+// they move with every commit and will silently become stale.
+var unstableBranches = map[string]bool{
+	"main": true, "master": true, "develop": true, "development": true,
+	"feat": true, "fix": true, "bug": true, "hotfix": true,
+}
+
+// warnBranchRef prints a red warning when a ref resolves to a known branch name.
+func warnBranchRef(provider, action, ref string) {
+	fmt.Printf("%s%sWARNING: %s@%s is a branch ref — the pinned SHA will become stale. Use a tag instead.%s\n",
+		Ansi(AnsiBold), Ansi(AnsiRed), action, ref, Ansi(AnsiReset))
+}
+
 // warnDrift prints a warning when a pinned ref's SHA no longer matches.
 func warnDrift(kind, ref, tag, pinnedSHA, currentSHA string) {
 	fmt.Printf("%s%sWARNING: %s@%s has drifted — %s was mutated!%s\n  pinned:  %s\n  current: %s\n  → update this ref manually\n",
@@ -223,11 +236,18 @@ func (ap *actionPinner) pin(content string) (string, error) {
 		if isSHA(ref) {
 			return "", false
 		}
+		if unstableBranches[strings.ToLower(ref)] {
+			warnBranchRef(ap.name, action, ref)
+		}
 		repoPath := actionRepoPath(action)
 		sha, err := ap.cache.getOrSet(repoPath+"@"+ref, func() (string, error) {
 			return ap.resolve(repoPath, ref)
 		})
 		if err != nil {
+			if unstableBranches[strings.ToLower(ref)] {
+				// Non-fatal: branch may not exist on this repo, already warned above.
+				return "", false
+			}
 			resolveErr = fmt.Errorf("%s: %s@%s: %w", ap.name, repoPath, ref, err)
 			return "", false
 		}
