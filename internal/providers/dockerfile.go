@@ -73,4 +73,3 @@ func (r *dockerfileResolver) pinFrom(content string) string {
 
 // setClient allows tests to inject a fake HTTP client.
 func (r *dockerfileResolver) setClient(c *http.Client) { r.docker.client = c }
-

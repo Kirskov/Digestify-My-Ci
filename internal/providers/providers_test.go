@@ -22,24 +22,24 @@ func (tr rewriteHostTransport) RoundTrip(req *http.Request) (*http.Response, err
 func rewriteHost(base string) http.RoundTripper { return rewriteHostTransport{base: base} }
 
 const (
-	ghWorkflowCI       = ".github/workflows/ci.yml"
-	ghWorkflowSkip     = ".github/workflows/skip.yml"
-	ghWorkflowDir      = "/.github/workflows"
-	ciYML              = "/ci.yml"
-	checkoutV4Line     = "      - uses: actions/checkout@v4\n"
-	testFakeSHA        = "aabbccdd11223344556677889900aabbccdd1100"
-	gitlabCom          = "https://gitlab.com"
-	gitlabCIYML        = ".gitlab-ci.yml"
-	manifestsPath      = "/manifests/"
-	dockerDigestHeader = "Docker-Content-Digest"
-	wantDigestInOutput = "expected digest in output, got:\n%s"
-	wantTagAsComment        = "expected original tag as comment, got:\n%s"
-	wantContentUnchanged    = "expected content unchanged when pinImages=false, got:\n%s"
-	wantSHAInOutput    = "expected SHA in output, got:\n%s"
-	gitRefsTagsPath    = "/git/refs/tags/"
-	commitsPath        = "/commits/"
-	trivyVersion        = "0.69.3"
-	wantTrivyTagComment = "# " + trivyVersion
+	ghWorkflowCI         = ".github/workflows/ci.yml"
+	ghWorkflowSkip       = ".github/workflows/skip.yml"
+	ghWorkflowDir        = "/.github/workflows"
+	ciYML                = "/ci.yml"
+	checkoutV4Line       = "      - uses: actions/checkout@v4\n"
+	testFakeSHA          = "aabbccdd11223344556677889900aabbccdd1100"
+	gitlabCom            = "https://gitlab.com"
+	gitlabCIYML          = ".gitlab-ci.yml"
+	manifestsPath        = "/manifests/"
+	dockerDigestHeader   = "Docker-Content-Digest"
+	wantDigestInOutput   = "expected digest in output, got:\n%s"
+	wantTagAsComment     = "expected original tag as comment, got:\n%s"
+	wantContentUnchanged = "expected content unchanged when pinImages=false, got:\n%s"
+	wantSHAInOutput      = "expected SHA in output, got:\n%s"
+	gitRefsTagsPath      = "/git/refs/tags/"
+	commitsPath          = "/commits/"
+	trivyVersion         = "0.69.3"
+	wantTrivyTagComment  = "# " + trivyVersion
 )
 
 // ── isSHA ────────────────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ func TestExtractStem(t *testing.T) {
 		{"DIGEST_NODE", "NODE"},
 		// no marker
 		{"NOTSUFFIX", ""},
-		{"VERSION", ""},  // marker only, no stem
+		{"VERSION", ""}, // marker only, no stem
 		{"TAG", ""},
 	}
 	for _, c := range cases {
@@ -718,7 +718,6 @@ func TestDockerResolverSkipsDigest(t *testing.T) {
 		t.Errorf("expected already-digested image to be skipped, got:\n%s", got)
 	}
 }
-
 
 // ── doWithRetry ───────────────────────────────────────────────────────────────
 

@@ -71,18 +71,18 @@ func main() {
 	}
 
 	cfg := scanner.Config{
-		Path:        *path,
-		DryRun:      *dryRun,
-		GitHubToken: *githubToken,
-		GitLabToken: *gitlabToken,
+		Path:         *path,
+		DryRun:       *dryRun,
+		GitHubToken:  *githubToken,
+		GitLabToken:  *gitlabToken,
 		GitLabHost:   *gitlabHost,
 		ForgejoHost:  *forgejoHost,
 		ForgejoToken: *forgejoToken,
-		PinActions:  *pinActions,
-		PinImages:   *pinImages,
-		Exclude:     excludePatterns,
-		Output:      *output,
-		Format:      *format,
+		PinActions:   *pinActions,
+		PinImages:    *pinImages,
+		Exclude:      excludePatterns,
+		Output:       *output,
+		Format:       *format,
 	}
 
 	cfgFile, err := scanner.LoadConfigFile(*configPath)

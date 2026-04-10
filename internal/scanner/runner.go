@@ -75,12 +75,12 @@ func Run(cfg Config) error {
 			defer wg.Done()
 			defer func() { <-sem }()
 			fileChange, err := processFile(filePath, cfg.Path, providerList, processOpts{
-					dryRun:     cfg.DryRun,
-					pinActions: cfg.PinActions,
-					pinImages:  cfg.PinImages,
-					format:     format,
-					out:        out,
-				})
+				dryRun:     cfg.DryRun,
+				pinActions: cfg.PinActions,
+				pinImages:  cfg.PinImages,
+				format:     format,
+				out:        out,
+			})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "warn: %s: %v\n", filePath, err)
 				return

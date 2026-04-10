@@ -82,4 +82,3 @@ func applyBool(src *bool, dst *bool, explicit bool) {
 		*dst = *src
 	}
 }
-

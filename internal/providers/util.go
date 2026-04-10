@@ -45,15 +45,15 @@ const (
 	patternDockerPinned = `image:\s+['"]?([a-zA-Z0-9_.\-/]+)@(sha256:[0-9a-f]+)['"]?\s+#\s+(\S+)`
 	patternFromLine     = `(?m)^(FROM\s+)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(\s|$)`
 	patternFromPinned   = `(?m)^FROM\s+([a-zA-Z0-9_.\-/]+)@(sha256:[0-9a-f]+)\s+#\s+(\S+)`
-	patternGHAction    = `(uses:\s+)([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([^\s#]+)`
-	patternGHPinned    = `uses:\s+([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([0-9a-f]{40})\s+#\s+(\S+)`
-	patternGLComponent = `(component:\s+)(\$?[a-zA-Z0-9_.\-/]+)@([^\s#]+)`
-	patternGLPinned    = `component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`
-	patternGLInputTag  = `(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`
+	patternGHAction     = `(uses:\s+)([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([^\s#]+)`
+	patternGHPinned     = `uses:\s+([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([0-9a-f]{40})\s+#\s+(\S+)`
+	patternGLComponent  = `(component:\s+)(\$?[a-zA-Z0-9_.\-/]+)@([^\s#]+)`
+	patternGLPinned     = `component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`
+	patternGLInputTag   = `(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`
 
-	bearerPrefix  = "Bearer "
-	maxRetries    = 3
-	httpTimeout   = 30 * time.Second
+	bearerPrefix = "Bearer "
+	maxRetries   = 3
+	httpTimeout  = 30 * time.Second
 )
 
 var shaRegex = regexp.MustCompile(patternSHA)
@@ -76,16 +76,16 @@ var builtinStemMappings = map[string]string{
 	"RUBY":      "ruby",
 	"RUST":      "rust",
 	"DOTNET":    "mcr.microsoft.com/dotnet/sdk",
-	"KUBECTL":    "bitnami/kubectl",
-	"HELM":       "alpine/helm",
-	"POSTGRES":   "postgres",
-	"MYSQL":      "mysql",
-	"REDIS":      "redis",
-	"NGINX":      "nginx",
-	"SONARQUBE":  "sonarsource/sonar-scanner-cli",
-	"SONAR":      "sonarsource/sonar-scanner-cli",
-	"AWS_CLI":    "amazon/aws-cli",
-	"AWSCLI":     "amazon/aws-cli",
+	"KUBECTL":   "bitnami/kubectl",
+	"HELM":      "alpine/helm",
+	"POSTGRES":  "postgres",
+	"MYSQL":     "mysql",
+	"REDIS":     "redis",
+	"NGINX":     "nginx",
+	"SONARQUBE": "sonarsource/sonar-scanner-cli",
+	"SONAR":     "sonarsource/sonar-scanner-cli",
+	"AWS_CLI":   "amazon/aws-cli",
+	"AWSCLI":    "amazon/aws-cli",
 	"CURL":      "curlimages/curl",
 	"GIT_CLIFF": "orhunp/git-cliff",
 }
@@ -443,4 +443,3 @@ func parseRateLimitReset(h string) (time.Duration, bool) {
 	}
 	return 0, false
 }
-

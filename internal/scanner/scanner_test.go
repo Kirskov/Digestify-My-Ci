@@ -16,14 +16,14 @@ import (
 )
 
 const (
-	ghWorkflowCI   = ".github/workflows/ci.yml"
-	ghWorkflowSkip = ".github/workflows/skip.yml"
-	ghWorkflowDir  = "/.github/workflows"
-	ciYML          = "/ci.yml"
-	checkoutV4Line = "      - uses: actions/checkout@v4\n"
-	testFakeSHA    = "aabbccdd11223344556677889900aabbccdd1100"
-	gitlabCom      = "https://gitlab.com"
-	gitlabCIYML    = ".gitlab-ci.yml"
+	ghWorkflowCI    = ".github/workflows/ci.yml"
+	ghWorkflowSkip  = ".github/workflows/skip.yml"
+	ghWorkflowDir   = "/.github/workflows"
+	ciYML           = "/ci.yml"
+	checkoutV4Line  = "      - uses: actions/checkout@v4\n"
+	testFakeSHA     = "aabbccdd11223344556677889900aabbccdd1100"
+	gitlabCom       = "https://gitlab.com"
+	gitlabCIYML     = ".gitlab-ci.yml"
 	gitRefsTagsPath = "/git/refs/tags/"
 	commitsPath     = "/commits/"
 )

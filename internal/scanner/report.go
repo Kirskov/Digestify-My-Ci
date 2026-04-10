@@ -55,11 +55,11 @@ func renderJSON(out io.Writer, changes []FileChange) error {
 }
 
 const (
-	sarifVersion   = "2.1.0"
-	sarifSchema    = "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json"
-	sarifRuleID    = "floating-ref"
-	sarifToolName  = "digestify-my-ci"
-	sarifToolVer   = "0.0.0"
+	sarifVersion  = "2.1.0"
+	sarifSchema   = "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json"
+	sarifRuleID   = "floating-ref"
+	sarifToolName = "digestify-my-ci"
+	sarifToolVer  = "0.0.0"
 )
 
 // sarifText wraps a string in the SARIF message/shortDescription shape.
@@ -93,8 +93,10 @@ func renderSARIF(out io.Writer, changes []FileChange) error {
 		Rules   []rule `json:"rules"`
 	}
 	type run struct {
-		Tool    struct{ Driver driver `json:"driver"` } `json:"tool"`
-		Results []result                                `json:"results"`
+		Tool struct {
+			Driver driver `json:"driver"`
+		} `json:"tool"`
+		Results []result `json:"results"`
 	}
 	type sarif struct {
 		Version string `json:"version"`
@@ -118,7 +120,9 @@ func renderSARIF(out io.Writer, changes []FileChange) error {
 		Version: sarifVersion,
 		Schema:  sarifSchema,
 		Runs: []run{{
-			Tool: struct{ Driver driver `json:"driver"` }{Driver: driver{
+			Tool: struct {
+				Driver driver `json:"driver"`
+			}{Driver: driver{
 				Name:    sarifToolName,
 				Version: sarifToolVer,
 				Rules:   []rule{{ID: sarifRuleID, ShortDescription: sarifText{"Floating tag or ref pinned to immutable SHA"}}},

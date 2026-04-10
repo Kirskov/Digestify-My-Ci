@@ -3,9 +3,9 @@ package providers
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"net/http"
 	"strings"
-	"gopkg.in/yaml.v3"
 )
 
 const (
