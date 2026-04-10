@@ -193,13 +193,20 @@ func TestExtractStem(t *testing.T) {
 		key  string
 		want string
 	}{
+		// suffix form
 		{"TF_VERSION", "TF"},
 		{"TF_TAG", "TF"},
 		{"TF_DIGEST", "TF"},
 		{"NODE_VERSION", "NODE"},
 		{"tf_version", "TF"}, // case-insensitive
+		// prefix form
+		{"VERSION_TF", "TF"},
+		{"TAG_TF", "TF"},
+		{"DIGEST_NODE", "NODE"},
+		// no marker
 		{"NOTSUFFIX", ""},
-		{"VERSION", ""},      // no stem left
+		{"VERSION", ""},  // marker only, no stem
+		{"TAG", ""},
 	}
 	for _, c := range cases {
 		if got := extractStem(c.key); got != c.want {

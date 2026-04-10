@@ -89,16 +89,21 @@ var builtinStemMappings = map[string]string{
 	"CURL":       "curlimages/curl",
 }
 
-// versionKeySuffixes are the suffixes stripped from a variable name to get its stem.
-var versionKeySuffixes = []string{"_VERSION", "_TAG", "_DIGEST"}
+// versionMarkers are the tokens that may appear as a prefix or suffix
+// (with underscore separator) in a variable name to indicate a version value.
+// e.g. TF_VERSION, VERSION_TF, TF_TAG, TAG_TF → stem "TF"
+var versionMarkers = []string{"VERSION", "TAG", "DIGEST"}
 
-// extractStem strips a known suffix from a variable name and returns the
-// upper-case stem, or "" if no known suffix is present.
+// extractStem strips a version marker prefix or suffix from a variable name
+// and returns the upper-case stem, or "" if no marker is present.
 func extractStem(key string) string {
 	upper := strings.ToUpper(key)
-	for _, suffix := range versionKeySuffixes {
-		if strings.HasSuffix(upper, suffix) {
-			return upper[:len(upper)-len(suffix)]
+	for _, marker := range versionMarkers {
+		if strings.HasSuffix(upper, "_"+marker) {
+			return upper[:len(upper)-len("_"+marker)]
+		}
+		if strings.HasPrefix(upper, marker+"_") {
+			return upper[len(marker+"_"):]
 		}
 	}
 	return ""
