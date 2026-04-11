@@ -83,6 +83,7 @@ func main() {
 		Exclude:      excludePatterns,
 		Output:       *output,
 		Format:       *format,
+		Version:      Version,
 	}
 
 	cfgFile, err := scanner.LoadConfigFile(*configPath)

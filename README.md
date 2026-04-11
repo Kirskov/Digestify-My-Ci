@@ -17,6 +17,7 @@ Pin floating tags in CI workflow files to immutable SHAs, making your pipelines 
 - [Usage](#usage)
 - [Upgrading pinned refs](#upgrading-pinned-refs)
 - [Flags](#flags)
+- [Output formats](#output-formats)
 - [Config file](#config-file)
 - [Providers](#providers)
   - [GitHub Actions](#github-actions)
@@ -68,7 +69,7 @@ The tool scans recursively under `--path`, skipping `node_modules`, `.git`, `ven
 ### One-liner (Linux / macOS)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Kirskov/Shapin/18d784ba2b0ea6009c4abcce82afee49e09a554f/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Kirskov/Shapin/df97d9b9fd31e5e9ac80b2257d3eae7d7628509d/install.sh | sh
 ```
 
 The script URL is pinned to a commit SHA so the install script itself cannot be tampered with. Supports Ubuntu, Debian, Kali, Arch, Alpine, Red Hat, Fedora, and macOS. The script will automatically detect your OS and architecture, download the correct binary, and install it to `/usr/local/bin`.
@@ -201,8 +202,42 @@ Then rerun `shapin --path .` to resolve the new digest.
 | `--gitlab-host` | `https://gitlab.com` | GitLab instance URL |
 | `--forgejo-host` | `https://codeberg.org` | Forgejo instance URL |
 | `--forgejo-token` | `$FORGEJO_TOKEN` | Forgejo API token |
+| `--output` | — | Write output to a file instead of stdout |
+| `--format` | `text` | Output format: `text`, `json`, or `sarif` |
 
 Tokens can also be set via environment variables `GITHUB_TOKEN` and `GITLAB_TOKEN`.
+
+Warnings (drift, branch refs, resolution failures) are always written to stderr, so they never pollute `--output` or piped output.
+
+## Output formats
+
+### JSON
+
+```sh
+shapin --path ./myproject --format json --output results.json
+```
+
+Outputs a JSON array of file changes, each with the file path and a list of old/new line pairs with their line numbers.
+
+### SARIF
+
+```sh
+shapin --path ./myproject --format sarif --output results.sarif
+```
+
+Outputs [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) for upload to GitHub Code Scanning. Each result includes the file path and exact line number, so annotations appear inline in pull requests.
+
+Upload example:
+
+```yaml
+- name: Run Shapin
+  run: shapin --path . --format sarif --output shapin.sarif --dry-run=false
+
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: shapin.sarif
+```
 
 ## Config file
 
@@ -273,7 +308,7 @@ Same as GitHub Actions — if the component ref is a well-known branch name, a r
 
 #### Version inputs
 
-Two patterns are detected inside `variables:` and `inputs:` blocks at any nesting level:
+Two patterns are detected at any nesting level across the entire file:
 
 **1. `image:tag` values** — keys containing `TAG` with a full `image:tag` value:
 
@@ -317,6 +352,31 @@ The stem is the key name with `_VERSION`, `_TAG`, or `_DIGEST` stripped (prefix 
 | `AWS_CLI`, `AWSCLI` | `amazon/aws-cli` |
 | `CURL` | `curlimages/curl` |
 | `GIT_CLIFF` | `orhunp/git-cliff` |
+| `DOCKER`, `DIND` | `docker` |
+| `KANIKO` | `gcr.io/kaniko-project/executor` |
+| `GRADLE` | `gradle` |
+| `MAVEN`, `MVN` | `maven` |
+| `PHP` | `php` |
+| `ELASTICSEARCH`, `ES` | `elasticsearch` |
+| `MONGO`, `MONGODB` | `mongo` |
+| `RABBITMQ` | `rabbitmq` |
+| `GRYPE` | `anchore/grype` |
+| `SEMGREP` | `semgrep/semgrep` |
+| `COSIGN` | `cgr.dev/chainguard/cosign` |
+| `ANSIBLE` | `cytopia/ansible` |
+| `PACKER` | `hashicorp/packer` |
+| `VAULT` | `hashicorp/vault` |
+| `GOLANGCI`, `GOLANGCI_LINT` | `golangci/golangci-lint` |
+| `OPENTOFU`, `TOFU` | `ghcr.io/opentofu/opentofu` |
+| `VALKEY` | `valkey/valkey` |
+| `GRAFANA` | `grafana/grafana` |
+| `PROMETHEUS` | `prom/prometheus` |
+| `ALERTMANAGER` | `prom/alertmanager` |
+| `TRAEFIK` | `traefik` |
+| `CADDY` | `caddy` |
+| `TELEGRAF` | `telegraf` |
+| `BASH` | `bash` |
+| `SELENIUM` | `selenium/standalone-chrome` |
 
 For images not in this list, add a `tag-mappings` entry to `.shapin.json`:
 

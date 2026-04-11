@@ -15,12 +15,17 @@ type FileChange struct {
 
 // Hunk is a single line-level change (old → new).
 type Hunk struct {
-	Old string `json:"old"`
-	New string `json:"new"`
+	Old  string `json:"old"`
+	New  string `json:"new"`
+	Line int    `json:"line"` // 1-based line number in the original file
 }
 
-// diffLines calls fn(old, new) for every line position that differs between a and b.
-func diffLines(original, updated string, fn func(oldLine, newLine string)) {
+// diffLines calls fn(lineNumber, old, new) for every line position that differs
+// between original and updated. lineNumber is 1-based.
+//
+// Note: shapin only replaces inline values (SHAs, digests) and never inserts or
+// deletes lines, so a positional line-by-line diff is accurate here.
+func diffLines(original, updated string, fn func(line int, oldLine, newLine string)) {
 	originalLines := strings.Split(original, "\n")
 	updatedLines := strings.Split(updated, "\n")
 	lineCount := max(len(originalLines), len(updatedLines))
@@ -33,7 +38,7 @@ func diffLines(original, updated string, fn func(oldLine, newLine string)) {
 			newLine = updatedLines[i]
 		}
 		if oldLine != newLine {
-			fn(oldLine, newLine)
+			fn(i+1, oldLine, newLine)
 		}
 	}
 }
@@ -41,8 +46,8 @@ func diffLines(original, updated string, fn func(oldLine, newLine string)) {
 // collectChanges diffs original vs updated and returns the hunks.
 func collectChanges(path, original, updated string) FileChange {
 	fc := FileChange{Path: path}
-	diffLines(original, updated, func(o, u string) {
-		fc.Changes = append(fc.Changes, Hunk{Old: o, New: u})
+	diffLines(original, updated, func(line int, o, u string) {
+		fc.Changes = append(fc.Changes, Hunk{Old: o, New: u, Line: line})
 	})
 	return fc
 }
@@ -58,8 +63,7 @@ const (
 	sarifVersion  = "2.1.0"
 	sarifSchema   = "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json"
 	sarifRuleID   = "floating-ref"
-	sarifToolName = "digestify-my-ci"
-	sarifToolVer  = "0.0.0"
+	sarifToolName = "shapin"
 )
 
 // sarifText wraps a string in the SARIF message/shortDescription shape.
@@ -68,12 +72,16 @@ type sarifText struct {
 }
 
 // renderSARIF writes changes in SARIF 2.1.0 format for GitHub Code Scanning.
-func renderSARIF(out io.Writer, changes []FileChange) error {
+func renderSARIF(out io.Writer, changes []FileChange, version string) error {
 	type artifactLocation struct {
 		URI string `json:"uri"`
 	}
+	type region struct {
+		StartLine int `json:"startLine"`
+	}
 	type physicalLocation struct {
 		ArtifactLocation artifactLocation `json:"artifactLocation"`
+		Region           region           `json:"region"`
 	}
 	type location struct {
 		PhysicalLocation physicalLocation `json:"physicalLocation"`
@@ -106,8 +114,11 @@ func renderSARIF(out io.Writer, changes []FileChange) error {
 
 	var results []result
 	for _, fc := range changes {
-		loc := location{PhysicalLocation: physicalLocation{ArtifactLocation: artifactLocation{URI: fc.Path}}}
 		for _, h := range fc.Changes {
+			loc := location{PhysicalLocation: physicalLocation{
+				ArtifactLocation: artifactLocation{URI: fc.Path},
+				Region:           region{StartLine: h.Line},
+			}}
 			results = append(results, result{
 				RuleID:    sarifRuleID,
 				Message:   sarifText{fmt.Sprintf("Floating ref pinned: %q → %q", strings.TrimSpace(h.Old), strings.TrimSpace(h.New))},
@@ -124,7 +135,7 @@ func renderSARIF(out io.Writer, changes []FileChange) error {
 				Driver driver `json:"driver"`
 			}{Driver: driver{
 				Name:    sarifToolName,
-				Version: sarifToolVer,
+				Version: version,
 				Rules:   []rule{{ID: sarifRuleID, ShortDescription: sarifText{"Floating tag or ref pinned to immutable SHA"}}},
 			}},
 			Results: results,

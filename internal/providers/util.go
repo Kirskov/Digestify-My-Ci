@@ -49,7 +49,8 @@ const (
 	patternGHPinned     = `uses:\s+([a-zA-Z0-9_.-]+/[a-zA-Z0-9_./%-]+)@([0-9a-f]{40})\s+#\s+(\S+)`
 	patternGLComponent  = `(component:\s+)(\$?[a-zA-Z0-9_.\-/]+)@([^\s#]+)`
 	patternGLPinned     = `component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`
-	patternGLInputTag   = `(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`
+	patternGLInputTag     = `(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`
+	patternGLMappedVersion = `(?m)^(\s*)([A-Z0-9_]+):\s+(['"]?)([A-Za-z0-9][A-Za-z0-9._\-]*)(['"]?)\s*$`
 
 	bearerPrefix = "Bearer "
 	maxRetries   = 3
@@ -84,10 +85,41 @@ var builtinStemMappings = map[string]string{
 	"NGINX":     "nginx",
 	"SONARQUBE": "sonarsource/sonar-scanner-cli",
 	"SONAR":     "sonarsource/sonar-scanner-cli",
-	"AWS_CLI":   "amazon/aws-cli",
-	"AWSCLI":    "amazon/aws-cli",
-	"CURL":      "curlimages/curl",
-	"GIT_CLIFF": "orhunp/git-cliff",
+	"AWS_CLI":       "amazon/aws-cli",
+	"AWSCLI":        "amazon/aws-cli",
+	"CURL":          "curlimages/curl",
+	"GIT_CLIFF":     "orhunp/git-cliff",
+	"DOCKER":        "docker",
+	"DIND":          "docker",
+	"KANIKO":        "gcr.io/kaniko-project/executor",
+	"GRADLE":        "gradle",
+	"MAVEN":         "maven",
+	"MVN":           "maven",
+	"PHP":           "php",
+	"ELASTICSEARCH": "elasticsearch",
+	"ES":            "elasticsearch",
+	"MONGO":         "mongo",
+	"MONGODB":       "mongo",
+	"RABBITMQ":      "rabbitmq",
+	"GRYPE":         "anchore/grype",
+	"SEMGREP":       "semgrep/semgrep",
+	"COSIGN":        "cgr.dev/chainguard/cosign",
+	"ANSIBLE":       "cytopia/ansible",
+	"PACKER":        "hashicorp/packer",
+	"VAULT":         "hashicorp/vault",
+	"GOLANGCI":      "golangci/golangci-lint",
+	"GOLANGCI_LINT": "golangci/golangci-lint",
+	"OPENTOFU":      "ghcr.io/opentofu/opentofu",
+	"TOFU":          "ghcr.io/opentofu/opentofu",
+	"VALKEY":        "valkey/valkey",
+	"GRAFANA":      "grafana/grafana",
+	"PROMETHEUS":   "prom/prometheus",
+	"ALERTMANAGER": "prom/alertmanager",
+	"TRAEFIK":      "traefik",
+	"CADDY":        "caddy",
+	"TELEGRAF":     "telegraf",
+	"BASH":         "bash",
+	"SELENIUM":     "selenium/standalone-chrome",
 }
 
 // versionMarkers are the tokens that may appear as a prefix or suffix
@@ -223,13 +255,13 @@ func isUnstableBranch(ref string) bool {
 
 // warnBranchRef prints a red warning when a ref resolves to a known branch name.
 func warnBranchRef(provider, action, ref string) {
-	fmt.Printf("%s%sWARNING: %s@%s is a branch ref — the pinned SHA will become stale. Use a tag instead.%s\n",
+	fmt.Fprintf(os.Stderr, "%s%sWARNING: %s@%s is a branch ref — the pinned SHA will become stale. Use a tag instead.%s\n",
 		Ansi(AnsiBold), Ansi(AnsiRed), action, ref, Ansi(AnsiReset))
 }
 
 // warnDrift prints a warning when a pinned ref's SHA no longer matches.
 func warnDrift(kind, ref, tag, pinnedSHA, currentSHA string) {
-	fmt.Printf("%s%sWARNING: %s@%s has drifted — %s was mutated!%s\n  pinned:  %s\n  current: %s\n  → update this ref manually\n",
+	fmt.Fprintf(os.Stderr, "%s%sWARNING: %s@%s has drifted — %s was mutated!%s\n  pinned:  %s\n  current: %s\n  → update this ref manually\n",
 		Ansi(AnsiBold), Ansi(AnsiYellow), ref, tag, kind, Ansi(AnsiReset), pinnedSHA, currentSHA)
 }
 

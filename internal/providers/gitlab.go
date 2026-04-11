@@ -3,8 +3,10 @@ package providers
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"gopkg.in/yaml.v3"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -21,6 +23,10 @@ var gitlabCIRootFiles = []string{
 // gitlabInputTagRegex matches an input key containing TAG with an image:tag value.
 // e.g. `      TRIVY_TAG: "aquasec/trivy:0.69.3"`
 var gitlabInputTagRegex = mustCompile(patternGLInputTag)
+
+// gitlabMappedVersionRegex matches a bare version input whose key has a known stem.
+// e.g. `  TF_VERSION: "1.14.8"` or `  TF_VERSION: 1.14.8`
+var gitlabMappedVersionRegex = mustCompile(patternGLMappedVersion)
 
 // gitlabComponentRegex matches GitLab CI component refs:
 // `component: gitlab.com/group/project/name@ref`
@@ -45,9 +51,7 @@ func NewGitLabResolver(host, token string, userMappings map[string]string) *gitl
 		host = defaultGitLabHost
 	}
 	merged := make(map[string]string, len(builtinStemMappings)+len(userMappings))
-	for k, v := range builtinStemMappings {
-		merged[k] = v
-	}
+	maps.Copy(merged, builtinStemMappings)
 	// User-supplied mappings override builtins.
 	for k, v := range userMappings {
 		merged[strings.ToUpper(k)] = v
@@ -169,7 +173,7 @@ func (r *gitlabResolver) pinInputTagMatch(tagKeys map[string]bool) func(string) 
 
 		digest, err := r.docker.fetchDigest(image, tag)
 		if err != nil {
-			fmt.Printf("  warn: GitLab input %s (%s:%s): %v\n", key, image, tag, err)
+			fmt.Fprintf(os.Stderr, "  warn: GitLab input %s (%s:%s): %v\n", key, image, tag, err)
 			return match
 		}
 
@@ -178,50 +182,91 @@ func (r *gitlabResolver) pinInputTagMatch(tagKeys map[string]bool) func(string) 
 	}
 }
 
-// resolveMappedVersionInputs pins bare version values (e.g. TF_VERSION: "1.14.8")
-// by looking up the key's stem in tagMappings to find the image, then fetching
-// the digest for that version. Values starting with "$" (CI variable interpolation)
-// or already containing a digest are skipped.
-func (r *gitlabResolver) resolveMappedVersionInputs(content string) string {
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		trimmed := strings.TrimLeft(line, " \t")
-		colonIdx := strings.Index(trimmed, ":")
-		if colonIdx < 0 {
-			continue
+// collectMappedVersionKeys parses the YAML and returns keys from variables:/inputs:
+// blocks that have a stem in tagMappings and a bare, unpinned version value.
+func (r *gitlabResolver) collectMappedVersionKeys(content string) map[string]bool {
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(content), &root); err != nil || root.Kind == 0 {
+		return nil
+	}
+	keys := make(map[string]bool)
+	r.walkMappedVersionMaps(&root, keys)
+	return keys
+}
+
+func (r *gitlabResolver) walkMappedVersionMaps(node *yaml.Node, keys map[string]bool) {
+	if node == nil {
+		return
+	}
+	if node.Kind == yaml.DocumentNode {
+		for _, child := range node.Content {
+			r.walkMappedVersionMaps(child, keys)
 		}
-		key := strings.TrimSpace(trimmed[:colonIdx])
-		stem := extractStem(key)
+		return
+	}
+	if node.Kind == yaml.MappingNode {
+		// Collect eligible keys from every mapping node — mapped-version inputs
+		// can appear at any depth, not only inside variables:/inputs: blocks.
+		r.collectMappedVersionKeysFromMap(node, keys)
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			r.walkMappedVersionMaps(node.Content[i+1], keys)
+		}
+		return
+	}
+	if node.Kind == yaml.SequenceNode {
+		for _, child := range node.Content {
+			r.walkMappedVersionMaps(child, keys)
+		}
+	}
+}
+
+func (r *gitlabResolver) collectMappedVersionKeysFromMap(node *yaml.Node, keys map[string]bool) {
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		k := node.Content[i].Value
+		v := node.Content[i+1].Value
+		stem := extractStem(k)
 		if stem == "" {
 			continue
 		}
-		image, ok := r.tagMappings[stem]
-		if !ok {
+		if _, ok := r.tagMappings[stem]; !ok {
 			continue
 		}
-		rest := strings.TrimSpace(trimmed[colonIdx+1:])
-		version := strings.Trim(rest, `'"`)
 		// Skip: CI variable interpolation, already a digest, image:tag format, empty
-		if version == "" || strings.HasPrefix(version, "$") || isSHA(version) || strings.Contains(version, ":") {
+		if v == "" || strings.HasPrefix(v, "$") || isSHA(v) || strings.Contains(v, ":") {
 			continue
 		}
+		keys[k] = true
+	}
+}
+
+// resolveMappedVersionInputs pins bare version values (e.g. TF_VERSION: "1.14.8")
+// by looking up the key's stem in tagMappings to find the image, then fetching
+// the digest for that version. Uses YAML parsing to identify eligible keys, then
+// regex replacement to preserve file formatting.
+func (r *gitlabResolver) resolveMappedVersionInputs(content string) string {
+	mappedKeys := r.collectMappedVersionKeys(content)
+	if len(mappedKeys) == 0 {
+		return content
+	}
+	return gitlabMappedVersionRegex.ReplaceAllStringFunc(content, func(match string) string {
+		parts := gitlabMappedVersionRegex.FindStringSubmatch(match)
+		if len(parts) < 6 {
+			return match
+		}
+		indent, key, quoteOpen, version, quoteClose := parts[1], parts[2], parts[3], parts[4], parts[5]
+		if !mappedKeys[key] {
+			return match
+		}
+		stem := extractStem(key)
+		image := r.tagMappings[stem]
 		digest, err := r.docker.fetchDigest(image, version)
 		if err != nil {
-			fmt.Printf("  warn: GitLab input %s (%s:%s): %v\n", key, image, version, err)
-			continue
-		}
-		indent := line[:len(line)-len(trimmed)]
-		// Preserve original quote style
-		quote := ""
-		if strings.HasPrefix(rest, `"`) {
-			quote = `"`
-		} else if strings.HasPrefix(rest, `'`) {
-			quote = `'`
+			fmt.Fprintf(os.Stderr, "  warn: GitLab input %s (%s:%s): %v\n", key, image, version, err)
+			return match
 		}
 		digestKey := toDigestKey(key)
-		lines[i] = fmt.Sprintf("%s%s: %s%s%s # %s", indent, digestKey, quote, digest, quote, version)
-	}
-	return strings.Join(lines, "\n")
+		return fmt.Sprintf("%s%s: %s%s%s # %s", indent, digestKey, quoteOpen, digest, quoteClose, version)
+	})
 }
 
 // gitlabHostVars are predefined GitLab CI variables that expand to the instance hostname.
@@ -266,7 +311,7 @@ func (r *gitlabResolver) pinComponents(content string) (string, error) {
 			if strings.Contains(err.Error(), "HTTP 404") {
 				msg += " — try --gitlab-token if this is a private component"
 			}
-			fmt.Println(msg)
+			fmt.Fprintln(os.Stderr, msg)
 			return "", false
 		}
 		if isUnstableBranch(ref) {
@@ -290,9 +335,9 @@ func (r *gitlabResolver) warnIfDrifted(content string) {
 // It tries the tags API first (no token needed for public projects),
 // then falls back to the commits API.
 func (r *gitlabResolver) fetchComponentSHA(component, ref string) (string, error) {
-	projectPath := extractProjectPath(component)
-	if projectPath == "" {
-		return "", fmt.Errorf("cannot parse component path: %s", component)
+	projectPath, err := extractProjectPath(component)
+	if err != nil {
+		return "", err
 	}
 	encoded := strings.ReplaceAll(projectPath, "/", "%2F")
 
@@ -305,30 +350,36 @@ func (r *gitlabResolver) fetchComponentSHA(component, ref string) (string, error
 	return r.fetchCommitSHA(encoded, ref)
 }
 
-func (r *gitlabResolver) fetchTagSHA(encodedProject, tag string) (string, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/tags/%s", r.host, encodedProject, tag)
+// gitlabGet performs an authenticated GET to the GitLab API and decodes the
+// JSON response body into out. Returns an error if the status is not 200.
+func (r *gitlabResolver) gitlabGet(url string, out any) error {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if r.token != "" {
 		req.Header.Set("PRIVATE-TOKEN", r.token)
 	}
 	resp, err := doWithRetry(r.client, req)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d for tag %s", resp.StatusCode, tag)
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+func (r *gitlabResolver) fetchTagSHA(encodedProject, tag string) (string, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/tags/%s", r.host, encodedProject, tag)
 	var result struct {
 		Commit struct {
 			ID string `json:"id"`
 		} `json:"commit"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
+	if err := r.gitlabGet(url, &result); err != nil {
+		return "", fmt.Errorf("tag %s: %w", tag, err)
 	}
 	if result.Commit.ID == "" {
 		return "", fmt.Errorf("empty SHA for tag %s", tag)
@@ -338,26 +389,11 @@ func (r *gitlabResolver) fetchTagSHA(encodedProject, tag string) (string, error)
 
 func (r *gitlabResolver) fetchCommitSHA(encodedProject, ref string) (string, error) {
 	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", r.host, encodedProject, ref)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-	if r.token != "" {
-		req.Header.Set("PRIVATE-TOKEN", r.token)
-	}
-	resp, err := doWithRetry(r.client, req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d for ref %s", resp.StatusCode, ref)
-	}
 	var result struct {
 		ID string `json:"id"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
+	if err := r.gitlabGet(url, &result); err != nil {
+		return "", fmt.Errorf("ref %s: %w", ref, err)
 	}
 	if result.ID == "" {
 		return "", fmt.Errorf("empty SHA for ref %s", ref)
@@ -366,17 +402,17 @@ func (r *gitlabResolver) fetchCommitSHA(encodedProject, ref string) (string, err
 }
 
 // extractProjectPath extracts "group/project" from a component path like
-// "gitlab.com/group/project/component" or "group/project/component".
-func extractProjectPath(component string) string {
+// "gitlab.com/group/project/component". The first segment must contain a dot
+// (i.e. be a hostname); paths without a hostname are invalid per the GitLab CI spec.
+func extractProjectPath(component string) (string, error) {
 	parts := strings.Split(component, "/")
-	start := 0
-	if strings.Contains(parts[0], ".") {
-		start = 1
+	if len(parts) < 1 || !strings.Contains(parts[0], ".") {
+		return "", fmt.Errorf("component path must start with a hostname (e.g. gitlab.com/...): %s", component)
 	}
-	if len(parts) < start+2 {
-		return ""
+	if len(parts) < 3 {
+		return "", fmt.Errorf("component path too short, expected hostname/group/project/name: %s", component)
 	}
-	return parts[start] + "/" + parts[start+1]
+	return parts[1] + "/" + parts[2], nil
 }
 
 // Resolve replaces image tags, bare version inputs, and component refs to digests/SHAs.

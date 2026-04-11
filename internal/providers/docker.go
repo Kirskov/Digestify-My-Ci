@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -67,7 +68,7 @@ func (d *dockerResolver) pinImage(match string) string {
 		return d.fetchDigest(image, tag)
 	})
 	if err != nil {
-		fmt.Printf("  warn: docker image %s:%s: %v\n", image, tag, err)
+		fmt.Fprintf(os.Stderr, "  warn: docker image %s:%s: %v\n", image, tag, err)
 		return match
 	}
 	return fmt.Sprintf("%s%s@%s%s # %s", prefix, image, digest, suffix, tag)

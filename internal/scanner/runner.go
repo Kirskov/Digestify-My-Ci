@@ -99,7 +99,7 @@ func Run(cfg Config) error {
 	case FormatJSON:
 		return renderJSON(out, changes)
 	case FormatSARIF:
-		return renderSARIF(out, changes)
+		return renderSARIF(out, changes, cfg.Version)
 	}
 
 	if cfg.DryRun && anyChanged.Load() {
@@ -271,7 +271,7 @@ func printDiff(out io.Writer, path, original, updated string) {
 	reset := providers.Ansi(providers.AnsiReset)
 	fmt.Fprintf(out, "\n%s%s--- %s%s\n", providers.Ansi(providers.AnsiBold), providers.Ansi(providers.AnsiCyan), path, reset)
 	fmt.Fprintf(out, "%s%s+++ %s (pinned)%s\n", providers.Ansi(providers.AnsiBold), providers.Ansi(providers.AnsiCyan), path, reset)
-	diffLines(original, updated, func(o, u string) {
+	diffLines(original, updated, func(_ int, o, u string) {
 		if o != "" {
 			fmt.Fprintf(out, "%s-%s%s\n", providers.Ansi(providers.AnsiRed), o, reset)
 		}

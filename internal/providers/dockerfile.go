@@ -3,6 +3,7 @@ package providers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -62,7 +63,7 @@ func (r *dockerfileResolver) pinFrom(content string) string {
 			return r.docker.fetchDigest(image, tag)
 		})
 		if err != nil {
-			fmt.Printf("  warn: Dockerfile FROM %s:%s: %v\n", image, tag, err)
+			fmt.Fprintf(os.Stderr, "  warn: Dockerfile FROM %s:%s: %v\n", image, tag, err)
 			return match
 		}
 		// trailing is either " " (before AS alias) or "\n" (end of line).

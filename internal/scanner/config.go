@@ -15,4 +15,5 @@ type Config struct {
 	TagMappings  map[string]string // stem → image overrides for bare-version inputs (e.g. "TF" → "hashicorp/terraform")
 	Output       string            // write output to this file path instead of stdout (optional)
 	Format       string            // output format: "text" (default), "json", or "sarif"
+	Version      string            // build version injected via ldflags, used in SARIF output
 }
