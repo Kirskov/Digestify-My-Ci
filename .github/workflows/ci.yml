@@ -54,9 +54,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Run gosec
-        uses: securego/gosec@43fee884f668c23601e0bec7a8c095fba226f889 # v2.22.1
+        uses: securego/gosec@223e19b8856e00f02cc67804499a83f77e208f3c # v2.25.0
         with:
-          args: -fmt=sarif -out=gosec.sarif ./...
+          args: -fmt sarif -out gosec.sarif ./...
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v3
