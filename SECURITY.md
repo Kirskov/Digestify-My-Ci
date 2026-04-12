@@ -21,6 +21,26 @@ Include:
 
 You will receive a response within 7 days. If the report is confirmed, a fix will be released as soon as possible and you will be credited in the release notes (unless you prefer to remain anonymous).
 
+## SAST Remediation Policy
+
+Shapin runs CodeQL and gosec on every push to `main` and every pull request. Findings are uploaded to GitHub Code Scanning as SARIF.
+
+### Thresholds
+
+| Severity | Remediation threshold |
+|---|---|
+| Critical / High | Must be fixed before merging — no exceptions |
+| Medium | Must be fixed or documented as a false positive within 30 days |
+| Low / Informational | Assessed on a case-by-case basis |
+
+### Process
+
+1. SAST tools run automatically via the `codeql` and `gosec` jobs in `ci.yml` on every push and PR
+2. Findings appear inline in pull requests and in the GitHub Code Scanning tab
+3. Critical and High findings must be resolved before a PR is merged
+4. False positives must be dismissed in GitHub Code Scanning with a documented reason — they are never silently ignored
+5. Any finding that cannot be immediately fixed must be tracked as a GitHub issue with an agreed remediation deadline
+
 ## SCA Remediation Policy
 
 Shapin uses Grype to scan the SBOM on every CI run. The following thresholds apply:
