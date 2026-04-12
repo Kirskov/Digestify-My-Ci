@@ -1,0 +1,36 @@
+name: DCO
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions: read-all
+
+jobs:
+  dco:
+    name: DCO check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check DCO sign-off
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          MISSING=$(git log "$BASE".."$HEAD" --format="%H %s" | while read sha msg; do
+            if ! git log -1 --format="%B" "$sha" | grep -q "^Signed-off-by:"; then
+              echo "  $sha $msg"
+            fi
+          done)
+          if [ -n "$MISSING" ]; then
+            echo "The following commits are missing a Signed-off-by trailer:"
+            echo "$MISSING"
+            echo ""
+            echo "Please add 'Signed-off-by: Name <email>' to each commit (git commit -s)."
+            exit 1
+          fi
+          echo "All commits have a DCO sign-off."

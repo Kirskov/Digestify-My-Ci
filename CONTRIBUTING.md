@@ -79,6 +79,21 @@ test: add cases for prefix stem matching
 
 Built-in mappings live in `internal/providers/util.go` in the `builtinStemMappings` map. Add the stem (uppercase) and the corresponding Docker Hub image path. Update the table in `README.md`.
 
+## Developer Certificate of Origin (DCO)
+
+All commits must include a `Signed-off-by` trailer asserting that you are legally authorized to submit the contribution under the project's license. Add it with:
+
+```sh
+git commit -s -m "feat: my change"
+```
+
+This produces a trailer like:
+```
+Signed-off-by: Your Name <your@email.com>
+```
+
+The DCO check runs automatically on every pull request and will fail if any commit is missing the sign-off. See the [DCO](DCO) file for the full text.
+
 ## Code of Conduct
 
 Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
