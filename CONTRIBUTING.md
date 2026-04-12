@@ -21,6 +21,45 @@ go test ./...
 
 Requires Go 1.25+.
 
+## Running tests
+
+### Locally
+
+```sh
+# Run the full test suite
+go test ./...
+
+# Run with verbose output
+go test -v ./...
+
+# Run a specific package
+go test ./internal/providers/...
+go test ./internal/scanner/...
+
+# Run fuzz tests (example, 30 seconds)
+go test ./internal/providers/ -fuzz=FuzzDockerResolveImages -fuzztime=30s
+```
+
+No secrets or external services are required — all tests use fake HTTP servers via `net/http/httptest`.
+
+### What the tests cover
+
+| Package | What is tested |
+|---|---|
+| `internal/providers` | Each provider's `IsMatch`, `Resolve`, image pinning, action pinning, drift detection, retry logic |
+| `internal/scanner` | File discovery, exclusion patterns, dry-run mode, concurrent processing, diff output |
+
+A passing run looks like:
+```
+ok  github.com/Kirskov/Shapin/internal/providers  0.45s
+ok  github.com/Kirskov/Shapin/internal/scanner    0.12s
+ok  github.com/Kirskov/Shapin/cmd/shapin          0.01s
+```
+
+### In CI
+
+Tests run automatically on every push to `main` and every pull request via the `test` job in `.github/workflows/ci.yml`. Results are visible in the GitHub Actions tab. All checks must pass before a PR can be merged.
+
 ## Making changes
 
 1. Fork the repository and create a branch from `main`
