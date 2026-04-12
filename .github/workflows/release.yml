@@ -33,14 +33,14 @@ jobs:
           COMMIT=$(git rev-parse --short HEAD)
           DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%dT%H:%M')
           LDFLAGS="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.Date=${DATE}"
-          GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-linux-amd64   ./cmd/shapin
-          GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-linux-arm64   ./cmd/shapin
-          GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-darwin-amd64  ./cmd/shapin
-          GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-darwin-arm64  ./cmd/shapin
-          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-windows-amd64.exe ./cmd/shapin
-          upx --best dist/shapin-linux-amd64
-          upx --best dist/shapin-linux-arm64
-          upx --best dist/shapin-windows-amd64.exe
+          GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-${VERSION}-linux-amd64   ./cmd/shapin
+          GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-${VERSION}-linux-arm64   ./cmd/shapin
+          GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-${VERSION}-darwin-amd64  ./cmd/shapin
+          GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-${VERSION}-darwin-arm64  ./cmd/shapin
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/shapin-${VERSION}-windows-amd64.exe ./cmd/shapin
+          upx --best dist/shapin-${VERSION}-linux-amd64
+          upx --best dist/shapin-${VERSION}-linux-arm64
+          upx --best dist/shapin-${VERSION}-windows-amd64.exe
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
