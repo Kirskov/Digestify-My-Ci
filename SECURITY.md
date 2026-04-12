@@ -21,6 +21,31 @@ Include:
 
 You will receive a response within 7 days. If the report is confirmed, a fix will be released as soon as possible and you will be credited in the release notes (unless you prefer to remain anonymous).
 
+## Vulnerability Disclosure
+
+Once a vulnerability is confirmed and a fix is released, the project will publicly disclose the details through the following channels:
+
+- **GitHub Security Advisory**: a published advisory on the [Security Advisories](https://github.com/Kirskov/Shapin/security/advisories) page, including affected versions, a description of the vulnerability, and upgrade instructions
+- **Release notes**: the fix release changelog will reference the advisory
+- **CVE**: a CVE identifier will be requested via GitHub for significant vulnerabilities
+
+Disclosures include:
+- Affected version(s)
+- How to determine if you are vulnerable
+- Mitigation or remediation instructions (typically: upgrade to the latest release)
+
+## Vulnerability Disclosure
+
+Once a vulnerability is confirmed and a fix is released, the project will publicly disclose the details through:
+
+- **GitHub Security Advisory**: a published advisory on the [Security Advisories](https://github.com/Kirskov/Shapin/security/advisories) page, including affected versions, a description of the vulnerability, and upgrade instructions
+- **Release notes**: the fix release changelog will reference the advisory
+
+Disclosures include:
+- Affected version(s)
+- How to determine if you are vulnerable
+- Mitigation or remediation instructions (typically: upgrade to the latest release)
+
 ## Security Assessment
 
 ### Scope
