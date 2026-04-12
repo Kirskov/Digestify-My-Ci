@@ -14,6 +14,7 @@ Pin floating tags in CI workflow files to immutable SHAs, making your pipelines 
   - [One-liner](#one-liner-linux--macos)
   - [Manual](#manual)
   - [Docker](#docker)
+  - [Verify release integrity](#verify-release-integrity)
   - [Build from source](#build-from-source)
 - [Usage](#usage)
 - [Upgrading pinned refs](#upgrading-pinned-refs)
@@ -128,6 +129,39 @@ cosign verify \
   --certificate-identity "https://github.com/Kirskov/Shapin/.github/workflows/release.yml@refs/tags/v0.7.7" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   ghcr.io/kirskov/shapin@sha256:ee76782a3e71fb6dea2307cba2921929b339bc38baaab47f0027ef0f6028e6e0 # v0.7.7
+```
+
+### Verify release integrity
+
+Every release asset can be verified using three independent mechanisms:
+
+**1. Checksum verification** — a `checksums.txt` SHA-256 manifest is included in every release:
+
+```sh
+# Download the binary and checksum file
+curl -fsSL https://github.com/Kirskov/Shapin/releases/download/v1.2.0/shapin-v1.2.0-linux-amd64 -o shapin
+curl -fsSL https://github.com/Kirskov/Shapin/releases/download/v1.2.0/checksums.txt -o checksums.txt
+
+# Verify (expected output: "shapin-v1.2.0-linux-amd64: OK")
+sha256sum --ignore-missing -c checksums.txt
+```
+
+**2. cosign bundle signature** — each binary is signed with [cosign](https://github.com/sigstore/cosign) keyless signing via the Sigstore transparency log:
+
+```sh
+curl -fsSL https://github.com/Kirskov/Shapin/releases/download/v1.2.0/shapin-v1.2.0-linux-amd64.bundle -o shapin.bundle
+cosign verify-blob shapin \
+  --bundle shapin.bundle \
+  --certificate-identity "https://github.com/Kirskov/Shapin/.github/workflows/release.yml@refs/tags/v1.2.0" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+# Expected output: Verified OK
+```
+
+**3. SLSA provenance attestation** — build provenance is attested via GitHub's attestation framework:
+
+```sh
+gh attestation verify shapin --repo Kirskov/Shapin
+# Expected output: Attestation verification was successful
 ```
 
 ### Build from source
