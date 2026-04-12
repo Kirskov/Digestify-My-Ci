@@ -21,6 +21,28 @@ Include:
 
 You will receive a response within 7 days. If the report is confirmed, a fix will be released as soon as possible and you will be credited in the release notes (unless you prefer to remain anonymous).
 
+## SCA Remediation Policy
+
+Shapin uses Grype to scan the SBOM on every CI run. The following thresholds apply:
+
+### Vulnerabilities
+
+| Severity | Remediation threshold |
+|---|---|
+| Critical | Fix before the next release — no exceptions |
+| High | Fix within the next release cycle |
+| Medium | Fix within 90 days or document as not affected in `vex.json` |
+| Low / Negligible | Assessed on a case-by-case basis; documented in `vex.json` if not applicable |
+
+**Process:**
+1. Grype findings are uploaded as SARIF to GitHub Code Scanning on every push
+2. Critical and High findings block the release — the maintainer must either patch the dependency or add a justified `not_affected` entry in `vex.json`
+3. Findings assessed as not exploitable are documented in `vex.json` with a justification and impact statement per the OpenVEX spec
+
+### Licenses
+
+All dependencies must use OSI-approved open source licenses compatible with the MIT license. Dependencies with unknown, proprietary, or copyleft (GPL) licenses are not permitted without prior review.
+
 ## Secrets and Credentials Policy
 
 Shapin does not store, manage, or have custody of any secrets or credentials. API tokens are accepted at runtime via CLI flags or environment variables and are never persisted by the tool.
