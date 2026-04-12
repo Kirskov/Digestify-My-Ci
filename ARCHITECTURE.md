@@ -76,3 +76,66 @@ The Scanner runs up to 8 file-processing goroutines concurrently. Each Provider 
 | All image providers | Docker Registry HTTP API v2 | Optional `--registry-token` |
 
 All HTTP calls go through `doWithRetry`, which honours `Retry-After` and `X-RateLimit-Reset` headers and retries up to 3 times on HTTP 429 or 503.
+
+## External software interfaces
+
+### CLI
+
+Shapin's primary interface is the command-line. All options are documented in the [Flags](README.md#flags) section of the README.
+
+**Inputs:**
+- `--path` — directory to scan (default: `.`)
+- `--pin-refs` / `--pin-images` — controls which ref types are pinned
+- `--dry-run` — when `true`, no files are written
+- `--format` — output format: `text` (default), `json`, or `sarif`
+- `--output` — redirect output to a file instead of stdout
+- `--exclude` — glob patterns of files to skip
+- Token flags / environment variables for authenticating to upstream APIs
+
+**Outputs:**
+- **stdout** (or `--output` file): human-readable diff (text), structured change list (JSON), or SARIF 2.1.0 report
+- **stderr**: warnings (drift, branch refs, resolution failures) — never mixed into structured output
+- **exit code `0`**: success (files may or may not have changed)
+- **exit code non-zero**: fatal error (unreadable file, API failure on a pinned ref)
+
+### Config file (`.shapin.json`)
+
+All CLI flags can be persisted in a `.shapin.json` file at the scan root. CLI flags always take precedence. Full schema documented in [Config file](README.md#config-file).
+
+```json
+{
+  "dry-run": false,
+  "pin-refs": true,
+  "pin-images": true,
+  "exclude": ["path/to/skip.yml"],
+  "github-token": "...",
+  "gitlab-host": "https://gitlab.example.com",
+  "gitlab-token": "...",
+  "forgejo-host": "https://forgejo.example.com",
+  "forgejo-token": "...",
+  "tag-mappings": { "MY_TOOL": "myorg/mytool" }
+}
+```
+
+### JSON output schema
+
+When `--format json` is used, stdout is a JSON array:
+
+```json
+[
+  {
+    "path": ".github/workflows/ci.yml",
+    "changes": [
+      {
+        "line": 12,
+        "old": "uses: actions/checkout@v4",
+        "new": "uses: actions/checkout@abc1234...  # v4"
+      }
+    ]
+  }
+]
+```
+
+### SARIF output schema
+
+When `--format sarif` is used, stdout is a [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) document suitable for upload to GitHub Code Scanning. Each result identifies the file path and line number of an unpinned ref.
