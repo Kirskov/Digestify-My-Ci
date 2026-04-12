@@ -77,11 +77,21 @@ All contributions must meet the following requirements before being merged:
 - Do not introduce new dependencies without prior discussion in an issue
 - New providers must implement the `contract.Provider` interface
 
-**Testing**
-- All new code must be covered by tests
+**Testing policy**
+
+All major changes MUST add or update tests. A major change is any of the following:
+- A new provider or resolver
+- A new CLI flag or config option
+- A change to existing regex patterns or parsing logic
+- A bug fix (must include a regression test reproducing the bug)
+- A change to the scanner's file discovery or processing logic
+
+Requirements:
 - New providers require tests in `internal/providers/providers_test.go` using a fake HTTP server (see existing providers for examples)
-- Bug fixes must include a regression test
+- Regex or parsing changes require table-driven tests covering the new and previous behaviour
+- Bug fixes must include a test that fails before the fix and passes after
 - Run the full test suite before submitting: `go test ./...`
+- PRs that reduce test coverage without justification will not be merged
 
 **Security**
 - Do not introduce hardcoded credentials, tokens, or secrets
