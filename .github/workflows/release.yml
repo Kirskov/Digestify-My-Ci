@@ -53,6 +53,9 @@ jobs:
           format: spdx-json
           output-file: dist/sbom.spdx.json
 
+      - name: Copy VEX document
+        run: cp vex.json dist/vex.json
+
       - name: Generate checksums
         run: |
           cd dist
