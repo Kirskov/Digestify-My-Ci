@@ -86,11 +86,7 @@ If you hit GitHub API rate limits (common on shared corporate networks), pass a 
 curl -fsSL https://raw.githubusercontent.com/Kirskov/Shapin/df97d9b9fd31e5e9ac80b2257d3eae7d7628509d/install.sh | GITHUB_TOKEN=ghp_xxx sh
 ```
 
-To install a specific version without an API call:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Kirskov/Shapin/df97d9b9fd31e5e9ac80b2257d3eae7d7628509d/install.sh | VERSION=v1.3.1 sh
-```
+To install a specific version, use the [Manual](#manual) method below.
 
 ### Manual
 

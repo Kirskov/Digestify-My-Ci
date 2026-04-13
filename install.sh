@@ -98,9 +98,7 @@ latest_version() {
 
 install_deps
 
-if [ -z "$VERSION" ]; then
-  VERSION="$(latest_version)"
-fi
+VERSION="$(latest_version)"
 
 if [ -z "$VERSION" ]; then
   echo "Could not determine latest version."
