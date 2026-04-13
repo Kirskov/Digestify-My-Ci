@@ -40,6 +40,8 @@ const (
 	commitsPath          = "/commits/"
 	trivyVersion         = "0.69.3"
 	wantTrivyTagComment  = "# " + trivyVersion
+	imageTerraform       = "hashicorp/terraform"
+	imageTrivy           = "aquasec/trivy"
 )
 
 // ── isSHA ────────────────────────────────────────────────────────────────────
@@ -219,6 +221,103 @@ func TestGitLabRepinsDigestKeyWithBareVersion(t *testing.T) {
 	}
 }
 
+func TestLookupStem(t *testing.T) {
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	cases := []struct {
+		stem string
+		want string // "" means no match expected
+	}{
+		{"NODE", "node"},
+		{"NODE_IMAGE", "node"},    // intermediate segment stripped
+		{"NODE_RUNNER", "node"},   // any unknown suffix stripped
+		{"TF", imageTerraform},
+		{"TF_IMAGE", imageTerraform},
+		{"TRIVY", imageTrivy},
+		{"TRIVY_IMAGE", imageTrivy},
+		{"FAKESTEM", ""},           // unknown stem, no match
+		{"FAKESTEM_IMAGE", ""},     // unknown even after stripping
+		{"FAKESTEM_IMAGE_DIGEST", ""},
+	}
+	for _, c := range cases {
+		got := p.lookupStem(c.stem)
+		if got != c.want {
+			t.Errorf("lookupStem(%q) = %q, want %q", c.stem, got, c.want)
+		}
+	}
+}
+
+func TestGitLabPinsVersionInputWithIntermediateSuffix(t *testing.T) {
+	// NODE_IMAGE_DIGEST: "24.14.1-alpine3.23" should be pinned even though
+	// the stem is NODE_IMAGE, not NODE — lookupStem must strip _IMAGE to find NODE.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:node000001")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	p.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := "      NODE_IMAGE_DIGEST: \"24.14.1-alpine3.23\"\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:node000001") {
+		t.Errorf(wantDigestInOutput, got)
+	}
+	if !strings.Contains(got, "# 24.14.1-alpine3.23") {
+		t.Errorf(wantTagAsComment, got)
+	}
+}
+
+func TestGitLabMixedPinnedAndUnpinnedInputs(t *testing.T) {
+	// Regression test: when some inputs are already pinned (sha256:...) and one
+	// is not (NODE_IMAGE_DIGEST: bare version), shapin must pin the unpinned one
+	// and not report "everything already pinned".
+	digests := map[string]string{
+		"node": "sha256:node000002",
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, digestForPath(r.URL.Path, digests))
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	p.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := `include:
+  - component: $SPLIT_GLOBAL_COMPONENT_ROOT/node-catalogue/node-lambda-base@2.2.5
+    inputs:
+      TF_IMAGE_DIGEST: 'sha256:6bbb82d575aa7bd4f0a2c6e3a0838ab9590426c08a71d7a2783643f01004d356' # 1.13.5
+      TRIVY_IMAGE_DIGEST: "sha256:bcc376de8d77cfe086a917230e818dc9f8528e3c852f7b1aff648949b6258d1c" # 0.69.3
+      NODE_IMAGE_DIGEST: 24.14.1-alpine3.23
+`
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:node000002") {
+		t.Errorf("expected NODE_IMAGE_DIGEST to be pinned, got:\n%s", got)
+	}
+	if !strings.Contains(got, "# 24.14.1-alpine3.23") {
+		t.Errorf(wantTagAsComment, got)
+	}
+	// Already-pinned inputs must be left untouched
+	if !strings.Contains(got, "sha256:6bbb82d575aa7bd4f0a2c6e3a0838ab9590426c08a71d7a2783643f01004d356") {
+		t.Errorf("expected TF_IMAGE_DIGEST to remain unchanged, got:\n%s", got)
+	}
+}
+
 func TestExtractStem(t *testing.T) {
 	cases := []struct {
 		key  string
@@ -278,8 +377,8 @@ func TestToDigestKey(t *testing.T) {
 func TestGitLabRealWorldComponentInputs(t *testing.T) {
 	// Each image gets a distinct digest so we can assert each one was resolved.
 	digests := map[string]string{
-		"hashicorp/terraform": "sha256:tf000001",
-		"aquasec/trivy":       "sha256:trivy001",
+		imageTerraform: "sha256:tf000001",
+		imageTrivy:       "sha256:trivy001",
 		"node":                "sha256:node0001",
 		"alpine":              "sha256:alpine01",
 	}

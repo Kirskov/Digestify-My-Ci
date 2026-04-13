@@ -228,7 +228,7 @@ func (r *gitlabResolver) collectMappedVersionKeysFromMap(node *yaml.Node, keys m
 		if stem == "" {
 			continue
 		}
-		if _, ok := r.tagMappings[stem]; !ok {
+		if r.lookupStem(stem) == "" {
 			continue
 		}
 		// Skip: CI variable interpolation, already a digest, image:tag format, empty
@@ -236,6 +236,23 @@ func (r *gitlabResolver) collectMappedVersionKeysFromMap(node *yaml.Node, keys m
 			continue
 		}
 		keys[k] = true
+	}
+}
+
+// lookupStem finds the image for a stem by trying progressively shorter
+// prefixes. e.g. NODE_IMAGE → NODE_IMAGE, then NODE.
+// Returns the image name, or "" if no mapping is found.
+func (r *gitlabResolver) lookupStem(stem string) string {
+	s := stem
+	for {
+		if image, ok := r.tagMappings[s]; ok {
+			return image
+		}
+		idx := strings.LastIndex(s, "_")
+		if idx < 0 {
+			return ""
+		}
+		s = s[:idx]
 	}
 }
 
@@ -258,7 +275,7 @@ func (r *gitlabResolver) resolveMappedVersionInputs(content string) string {
 			return match
 		}
 		stem := extractStem(key)
-		image := r.tagMappings[stem]
+		image := r.lookupStem(stem)
 		digest, err := r.docker.fetchDigest(image, version)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "  warn: GitLab input %s (%s:%s): %v\n", key, image, version, err)
