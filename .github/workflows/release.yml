@@ -10,7 +10,7 @@ permissions: read-all
 jobs:
   sca-gate:
     name: SCA gate (Grype)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -32,7 +32,7 @@ jobs:
 
   release:
     name: Build and Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: sca-gate
     permissions:
       contents: write
@@ -118,7 +118,7 @@ jobs:
 
   docker:
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: sca-gate
     permissions:
       contents: read
