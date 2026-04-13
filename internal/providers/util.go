@@ -50,22 +50,23 @@ var gitlabDependencyProxyVars = []string{
 }
 
 // stripDependencyProxyPrefix removes a known GitLab dependency proxy variable
-// prefix (e.g. "${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/") from content,
-// returning the stripped content and whether a substitution occurred.
-func stripDependencyProxyPrefix(content string) (string, bool) {
+// prefix (e.g. "${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/") from a single
+// image reference string (not the whole file), returning the stripped value
+// and whether a substitution occurred.
+func stripDependencyProxyPrefix(imageRef string) (string, bool) {
 	for _, v := range gitlabDependencyProxyVars {
 		prefix := v + "/"
-		if strings.Contains(content, prefix) {
-			return strings.ReplaceAll(content, prefix, ""), true
+		if strings.HasPrefix(imageRef, prefix) {
+			return imageRef[len(prefix):], true
 		}
 	}
-	return content, false
+	return imageRef, false
 }
 
 // Regex pattern constants — centralised so no pattern is duplicated across files.
 const (
 	patternSHA          = `^[0-9a-f]{40}$`
-	patternDockerImage  = `(?m)^([^#\n]*image:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?)`
+	patternDockerImage  = `(?m)^([^#\n]*image:\s+['"]?)(\$\{[A-Z0-9_]+\}/|\$[A-Z0-9_]+/)?([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?)`
 	patternDockerPinned = `image:\s+['"]?([a-zA-Z0-9_.\-/]+)@(sha256:[0-9a-f]+)['"]?\s+#\s+(\S+)`
 	patternFromLine     = `(?m)^(FROM\s+)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(\s|$)`
 	patternFromPinned   = `(?m)^FROM\s+([a-zA-Z0-9_.\-/]+)@(sha256:[0-9a-f]+)\s+#\s+(\S+)`
@@ -74,7 +75,7 @@ const (
 	patternGLComponent  = `(component:\s+)(\$?[a-zA-Z0-9_.\-/]+)@([^\s#]+)`
 	patternGLPinned     = `component:\s+([a-zA-Z0-9_.\-/]+)@([0-9a-f]{40})\s+#\s+(\S+)`
 	patternGLInputTag     = `(?m)^(\s+[A-Z0-9_]*TAG[A-Z0-9_]*:\s+['"]?)([a-zA-Z0-9_.\-/]+):([a-zA-Z0-9_.\-]+)(['"]?\s*)$`
-	patternGLMappedVersion = `(?m)^(\s*)([A-Z0-9_]+):\s+(['"]?)([A-Za-z0-9][A-Za-z0-9._\-]*)(['"]?)\s*$`
+	patternGLMappedVersion = `(?m)^(\s*)([A-Z0-9_]+):\s+(['"]?)([A-Za-z0-9][A-Za-z0-9._\-]*)(['"]?)[^\S\n]*$`
 
 	bearerPrefix = "Bearer "
 	maxRetries   = 3

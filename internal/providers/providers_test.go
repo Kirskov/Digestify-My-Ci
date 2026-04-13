@@ -829,32 +829,32 @@ func TestStripDependencyProxyPrefix(t *testing.T) {
 	}{
 		{
 			name:    "brace syntax group prefix",
-			input:   "image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24.13.0-alpine3.23\n",
-			want:    "image: node:24.13.0-alpine3.23\n",
+			input:   "${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node",
+			want:    "node",
 			changed: true,
 		},
 		{
 			name:    "brace syntax direct group prefix",
-			input:   "image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/alpine:3.20\n",
-			want:    "image: alpine:3.20\n",
+			input:   "${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/alpine",
+			want:    "alpine",
 			changed: true,
 		},
 		{
 			name:    "bare dollar syntax",
-			input:   "image: $CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/python:3.12\n",
-			want:    "image: python:3.12\n",
+			input:   "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/python",
+			want:    "python",
 			changed: true,
 		},
 		{
 			name:    "no proxy prefix",
-			input:   "image: node:24.13.0-alpine3.23\n",
-			want:    "image: node:24.13.0-alpine3.23\n",
+			input:   "node",
+			want:    "node",
 			changed: false,
 		},
 		{
 			name:    "unrelated variable",
-			input:   "image: ${SOME_OTHER_VAR}/node:24.13.0\n",
-			want:    "image: ${SOME_OTHER_VAR}/node:24.13.0\n",
+			input:   "${SOME_OTHER_VAR}/node",
+			want:    "${SOME_OTHER_VAR}/node",
 			changed: false,
 		},
 	}

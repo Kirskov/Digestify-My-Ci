@@ -40,12 +40,9 @@ func newDockerResolver(registryToken string) *dockerResolver {
 
 // resolveImages replaces `image: name:tag` with `image: name@sha256:xxx # tag`
 // in the given content. Non-fatal: leaves unresolvable images untouched.
-// GitLab dependency proxy prefixes (e.g. ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/)
-// are stripped before resolution so the underlying Docker Hub image is pinned.
 func (d *dockerResolver) resolveImages(content string) string {
 	d.warnIfDrifted(content)
-	stripped, _ := stripDependencyProxyPrefix(content)
-	return dockerImageRegex.ReplaceAllStringFunc(stripped, d.pinImage)
+	return dockerImageRegex.ReplaceAllStringFunc(content, d.pinImage)
 }
 
 // warnIfDrifted checks already-pinned image digests and warns if the tag now
@@ -60,21 +57,40 @@ func (d *dockerResolver) warnIfDrifted(content string) {
 
 func (d *dockerResolver) pinImage(match string) string {
 	parts := dockerImageRegex.FindStringSubmatch(match)
-	if len(parts) < 5 {
+	if len(parts) < 6 {
 		return match
 	}
-	prefix, image, tag, suffix := parts[1], parts[2], parts[3], parts[4]
+	// parts[1]=prefix (e.g. "  image: "), parts[2]=optional proxy var prefix,
+	// parts[3]=image name, parts[4]=tag, parts[5]=closing quote
+	prefix, proxyVar, image, tag, suffix := parts[1], parts[2], parts[3], parts[4], parts[5]
+
+	// proxyVar already contains the trailing "/", so strip it before checking.
+	// Only known dependency proxy variables are stripped; other $VAR/ prefixes are kept.
+	proxyVarName := strings.TrimSuffix(proxyVar, "/")
+	strippedImage := image
+	isProxy := false
+	if proxyVarName != "" {
+		if _, ok := stripDependencyProxyPrefix(proxyVarName + "/" + image); ok {
+			strippedImage = image
+			isProxy = true
+		}
+	}
+	if !isProxy {
+		// Unknown variable prefix — include it in the image name as-is.
+		strippedImage = proxyVar + image
+	}
+
 	if isSHA(tag) || tag == "latest" {
 		return match
 	}
-	digest, err := d.cache.getOrSet(image+":"+tag, func() (string, error) {
-		return d.fetchDigest(image, tag)
+	digest, err := d.cache.getOrSet(strippedImage+":"+tag, func() (string, error) {
+		return d.fetchDigest(strippedImage, tag)
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "  warn: docker image %s:%s: %v\n", image, tag, err)
+		fmt.Fprintf(os.Stderr, "  warn: docker image %s:%s: %v\n", strippedImage, tag, err)
 		return match
 	}
-	return fmt.Sprintf("%s%s@%s%s # %s", prefix, image, digest, suffix, tag)
+	return fmt.Sprintf("%s%s@%s%s # %s", prefix, strippedImage, digest, suffix, tag)
 }
 
 // fetchDigest fetches the docker content digest for image:tag.
