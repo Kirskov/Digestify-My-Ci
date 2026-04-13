@@ -99,7 +99,7 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-ASSET="${BINARY}-${OS}-${ARCH}"
+ASSET="${BINARY}-${VERSION}-${OS}-${ARCH}"
 if [ "$OS" = "windows" ]; then
   ASSET="${ASSET}.exe"
 fi
