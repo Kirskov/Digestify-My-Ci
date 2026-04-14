@@ -44,6 +44,7 @@ Pin floating tags in CI workflow files to immutable SHAs, making your pipelines 
 | GitHub Action | `uses: actions/checkout@v4` | `uses: actions/checkout@abc1234... # v4` |
 | Forgejo Action | `uses: actions/checkout@v1` | `uses: actions/checkout@abc1234... # v1` |
 | Docker image (`image:`) | `image: maildev/maildev:2.2.1` | `image: maildev/maildev@sha256:180ef5... # 2.2.1` |
+| Docker image (`image: name:`) | `image:`<br>&nbsp;&nbsp;`name: maildev/maildev:2.2.1` | `image:`<br>&nbsp;&nbsp;`name: maildev/maildev@sha256:180ef5... # 2.2.1` |
 | Dockerfile `FROM` | `FROM golang:1.24-alpine AS builder` | `FROM golang@sha256:8bee19... # 1.24-alpine AS builder` |
 | GitLab component ref | `component: gitlab.com/group/proj/name@v1.0.0` | `component: gitlab.com/group/proj/name@abc1234... # v1.0.0` |
 | GitLab `image:tag` variable | `TRIVY_TAG: aquasec/trivy:0.69.3` | `TRIVY_TAG: aquasec/trivy@sha256:eafae... # 0.69.3` |
@@ -457,6 +458,18 @@ Both `${VAR}/` and `$VAR/` syntaxes are supported for `CI_DEPENDENCY_PROXY_GROUP
 
 > **Note:** The GitLab Dependency Proxy only supports Docker Hub images. Shapin resolves the stripped image name against Docker Hub, which matches what the proxy itself does.
 
+The `image: name:` map form is also supported:
+
+```yaml
+image:
+  name: maildev/maildev:2.2.1
+  entrypoint: [""]
+# →
+image:
+  name: maildev/maildev@sha256:180ef5... # 2.2.1
+  entrypoint: [""]
+```
+
 **Limitations:**
 - `extends:` and `!reference` template includes are not followed
 
@@ -540,7 +553,6 @@ API calls are automatically retried on HTTP 429 (rate limited) or 503 responses.
 ## What it can't do
 
 - **Private Docker registries** — only public registries (Docker Hub, GHCR, Quay.io, etc.) are supported
-- **`image:` inside a YAML map** — only the simple string form is handled (`image: name:tag`), not `image: { name: ..., tag: ... }`
 - **Branch refs** — pinning `@main` resolves to the current HEAD SHA, which will become stale — use tags when possible
 - **Unknown GitLab CI variable prefixes** — component paths starting with `$SPLIT_GLOBAL_COMPONENT_ROOT` or similar custom variables cannot be resolved
 
