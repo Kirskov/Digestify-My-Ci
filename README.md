@@ -160,9 +160,9 @@ sha256sum --ignore-missing -c checksums.txt
 **2. cosign bundle signature** — each binary is signed with [cosign](https://github.com/sigstore/cosign) keyless signing via the Sigstore transparency log:
 
 ```sh
-curl -fsSL https://github.com/Kirskov/Shapin/releases/download/v1.2.3/shapin-v1.2.3-linux-amd64.bundle -o shapin.bundle
+curl -fsSL https://github.com/Kirskov/Shapin/releases/download/v1.2.3/shapin-v1.2.3-linux-amd64.sigstore.json -o shapin.sigstore.json
 cosign verify-blob shapin \
-  --bundle shapin.bundle \
+  --bundle shapin.sigstore.json \
   --certificate-identity "https://github.com/Kirskov/Shapin/.github/workflows/release.yml@refs/tags/v1.2.3" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 # Expected output: Verified OK
