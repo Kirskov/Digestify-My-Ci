@@ -931,6 +931,150 @@ func TestGitLabSkipsImageNameSubkeyAlreadyPinned(t *testing.T) {
 	}
 }
 
+// ── GitLab services: block ───────────────────────────────────────────────────
+
+func TestGitLabPinsServiceBareItem(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:svc00001")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	p.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := "services:\n  - postgres:15\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:svc00001") {
+		t.Errorf(wantDigestInOutput, got)
+	}
+	if !strings.Contains(got, "# 15") {
+		t.Errorf(wantTagAsComment, got)
+	}
+}
+
+func TestGitLabPinsServiceNameSubkey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:svc00002")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	p.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := "services:\n  - name: redis:7\n    alias: cache\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:svc00002") {
+		t.Errorf(wantDigestInOutput, got)
+	}
+	if !strings.Contains(got, "# 7") {
+		t.Errorf(wantTagAsComment, got)
+	}
+}
+
+func TestGitLabSkipsServiceBareItemLatest(t *testing.T) {
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	content := "services:\n  - postgres:latest\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != content {
+		t.Errorf("expected 'latest' service item to be skipped, got:\n%s", got)
+	}
+}
+
+func TestGitLabSkipsServiceBareItemAlreadyPinned(t *testing.T) {
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	content := "services:\n  - postgres@sha256:abc123\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != content {
+		t.Errorf("expected already-pinned service item to be skipped, got:\n%s", got)
+	}
+}
+
+func TestGitLabPinsMultipleServicesInBlock(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:svc00003")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	p.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := "services:\n  - postgres:15\n  - redis:7\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(got, "sha256:svc00003") != 2 {
+		t.Errorf("expected both services to be pinned, got:\n%s", got)
+	}
+}
+
+func TestGitLabPinsServiceInJob(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, manifestsPath) {
+			w.Header().Set(dockerDigestHeader, "sha256:svc00004")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"token": "fake"})
+	}))
+	defer srv.Close()
+
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	p.docker.client = &http.Client{Transport: rewriteHost(srv.URL)}
+
+	content := "test:\n  image: golang:1.24\n  services:\n    - postgres:15\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "sha256:svc00004") {
+		t.Errorf(wantDigestInOutput, got)
+	}
+	if !strings.Contains(got, "# 15") {
+		t.Errorf(wantTagAsComment, got)
+	}
+}
+
+func TestGitLabServicesBlockDoesNotLeakIntoNextKey(t *testing.T) {
+	p := NewGitLabResolver(gitlabCom, "", nil)
+	// `script:` follows `services:` — the `- not-an-image:value` line must not be touched.
+	content := "services:\n  - postgres:latest\nscript:\n  - not-an-image:value\n"
+	got, err := p.Resolve(content, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "- not-an-image:value") {
+		t.Errorf("expected script item to be untouched, got:\n%s", got)
+	}
+}
+
 // ── dockerResolver ───────────────────────────────────────────────────────────
 
 func TestDockerResolverSkipsLatest(t *testing.T) {
