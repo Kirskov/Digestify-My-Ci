@@ -438,6 +438,7 @@ func (r *gitlabResolver) Resolve(content string, pinActions, pinImages bool) (st
 	if pinImages {
 		result = r.docker.resolveImages(result)
 		result = r.docker.resolveImageNames(result)
+		result = r.docker.resolveServices(result)
 		result = r.resolveComponentInputs(result)
 		result = r.resolveMappedVersionInputs(result)
 	}

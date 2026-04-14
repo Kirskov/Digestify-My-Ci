@@ -26,6 +26,10 @@ var dockerImageRegex = mustCompile(patternDockerImage)
 // extended image syntax where `image:` is a mapping with a `name:` sub-key.
 var dockerNameRegex = mustCompile(patternDockerName)
 
+// dockerServiceRegex matches bare list items like `  - postgres:15` inside
+// GitLab CI services: blocks.
+var dockerServiceRegex = mustCompile(patternGLService)
+
 // dockerPinnedRegex matches already-pinned `image: name@sha256:digest # tag`.
 var dockerPinnedRegex = mustCompile(patternDockerPinned)
 
@@ -54,6 +58,42 @@ func (d *dockerResolver) resolveImages(content string) string {
 // for GitLab CI's extended image syntax (image: {name: ..., entrypoint: ...}).
 func (d *dockerResolver) resolveImageNames(content string) string {
 	return d.pinImageRefs(dockerNameRegex, content)
+}
+
+// resolveServices pins bare list items in GitLab CI services: blocks,
+// e.g. `  - postgres:15` → `  - postgres@sha256:... # 15`.
+// It only processes lines that appear after a `services:` key and stops at
+// the next top-level key (no leading spaces).
+func (d *dockerResolver) resolveServices(content string) string {
+	lines := strings.Split(content, "\n")
+	inServices := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Detect `services:` key at any indent level.
+		if strings.HasSuffix(strings.TrimRight(trimmed, " \t"), "services:") || trimmed == "services:" {
+			inServices = true
+			continue
+		}
+		// A non-empty, non-comment line with no leading space ends the services block.
+		if inServices && len(line) > 0 && line[0] != ' ' && line[0] != '\t' && line[0] != '#' && !strings.HasPrefix(trimmed, "-") {
+			inServices = false
+		}
+		if !inServices {
+			continue
+		}
+		// Only process bare list items: `  - image:tag`
+		if !dockerServiceRegex.MatchString(line) {
+			continue
+		}
+		lines[i] = dockerServiceRegex.ReplaceAllStringFunc(line, func(match string) string {
+			parts := dockerServiceRegex.FindStringSubmatch(match)
+			if len(parts) < 6 {
+				return match
+			}
+			return d.pinImageParts(match, parts)
+		})
+	}
+	return strings.Join(lines, "\n")
 }
 
 // pinImageRefs pins all image references matched by re in content.
@@ -98,7 +138,11 @@ func (d *dockerResolver) pinImageParts(match string, parts []string) string {
 		strippedImage = proxyVar + image
 	}
 
-	if isSHA(tag) || tag == "latest" {
+	if isSHA(tag) {
+		return match
+	}
+	if tag == "latest" {
+		fmt.Fprintf(os.Stderr, "  warn: docker image %s:%s: avoid 'latest' — pin to an explicit tag\n", strippedImage, tag)
 		return match
 	}
 	digest, err := d.cache.getOrSet(strippedImage+":"+tag, func() (string, error) {
