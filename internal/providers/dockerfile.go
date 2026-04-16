@@ -35,12 +35,12 @@ func (r *dockerfileResolver) Resolve(content string, _, pinImages bool) (string,
 	if !pinImages {
 		return content, nil, nil
 	}
-	r.warnIfDrifted(content)
 	var warns []string
+	r.warnIfDrifted(content, &warns)
 	return r.pinFrom(content, &warns), warns, nil
 }
 
-func (r *dockerfileResolver) warnIfDrifted(content string) {
+func (r *dockerfileResolver) warnIfDrifted(content string, warns *[]string) {
 	// patternFromPinned captures (image, tag, sha) — different order from the
 	// generic driftChecker convention — so we handle it inline.
 	for _, parts := range dockerfileFromPinned.FindAllStringSubmatch(content, -1) {
@@ -50,7 +50,7 @@ func (r *dockerfileResolver) warnIfDrifted(content string) {
 			continue
 		}
 		if currentSHA != pinnedSHA {
-			warnDrift("image", image, tag, pinnedSHA, currentSHA)
+			warnDrift("image", image, tag, pinnedSHA, currentSHA, warns)
 		}
 	}
 }

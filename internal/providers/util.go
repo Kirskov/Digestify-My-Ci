@@ -286,10 +286,10 @@ func warnBranchRef(provider, action, ref string) {
 		Ansi(AnsiBold), Ansi(AnsiRed), action, ref, Ansi(AnsiReset))
 }
 
-// warnDrift prints a warning when a pinned ref's SHA no longer matches.
-func warnDrift(kind, ref, tag, pinnedSHA, currentSHA string) {
-	fmt.Fprintf(os.Stderr, "%s%sWARNING: %s@%s has drifted — %s was mutated!%s\n  pinned:  %s\n  current: %s\n  → update this ref manually\n",
-		Ansi(AnsiBold), Ansi(AnsiYellow), ref, tag, kind, Ansi(AnsiReset), pinnedSHA, currentSHA)
+// warnDrift appends a drift warning to warns.
+func warnDrift(kind, ref, tag, pinnedSHA, currentSHA string, warns *[]string) {
+	*warns = append(*warns, fmt.Sprintf("%s%sWARNING: %s@%s has drifted — %s was mutated!%s\n  pinned:  %s\n  current: %s\n  → update this ref manually",
+		Ansi(AnsiBold), Ansi(AnsiYellow), ref, tag, kind, Ansi(AnsiReset), pinnedSHA, currentSHA))
 }
 
 // actionPinner pins `uses: owner/repo@tag` refs to their SHAs using a shared cache.
@@ -346,7 +346,7 @@ type driftChecker struct {
 }
 
 // checkAll scans content for pinned refs and warns about any that have drifted.
-func (d *driftChecker) checkAll(content string) {
+func (d *driftChecker) checkAll(content string, warns *[]string) {
 	for _, parts := range d.pinnedRegex.FindAllStringSubmatch(content, -1) {
 		ref, pinnedSHA, tag := parts[1], parts[2], parts[3]
 		lookupRef := ref
@@ -358,7 +358,7 @@ func (d *driftChecker) checkAll(content string) {
 			continue
 		}
 		if currentSHA != pinnedSHA {
-			warnDrift(d.kind, ref, tag, pinnedSHA, currentSHA)
+			warnDrift(d.kind, ref, tag, pinnedSHA, currentSHA, warns)
 		}
 	}
 }

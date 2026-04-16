@@ -486,12 +486,12 @@ func (r *gitlabResolver) pinComponents(content string) (string, error) {
 }
 
 // warnIfDrifted checks already-pinned component refs and warns if the SHA has changed.
-func (r *gitlabResolver) warnIfDrifted(content string) {
+func (r *gitlabResolver) warnIfDrifted(content string, warns *[]string) {
 	(&driftChecker{
 		pinnedRegex: gitlabPinnedComponentRegex,
 		kind:        "ref",
 		resolve:     r.fetchComponentSHA,
-	}).checkAll(content)
+	}).checkAll(content, warns)
 }
 
 // fetchComponentSHA resolves a component ref to a commit SHA.
@@ -591,7 +591,7 @@ func (r *gitlabResolver) Resolve(content string, pinActions, pinImages bool) (st
 		result = r.resolveSpecInputs(result, &warns)
 	}
 	if pinActions {
-		r.warnIfDrifted(result)
+		r.warnIfDrifted(result, &warns)
 		var err error
 		result, err = r.pinComponents(result)
 		if err != nil {

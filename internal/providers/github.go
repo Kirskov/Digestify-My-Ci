@@ -57,20 +57,20 @@ func (r *githubResolver) Resolve(content string, pinActions, pinImages bool) (st
 	if !pinActions {
 		return content, warns, nil
 	}
-	r.warnIfDrifted(content)
+	r.warnIfDrifted(content, &warns)
 	result, err := r.pinActions(content)
 	return result, warns, err
 }
 
 // warnIfDrifted scans for already-pinned refs and warns if the SHA no longer
 // matches the tag. The file is never modified — the user must fix it manually.
-func (r *githubResolver) warnIfDrifted(content string) {
+func (r *githubResolver) warnIfDrifted(content string, warns *[]string) {
 	(&driftChecker{
 		pinnedRegex: githubPinnedRegex,
 		kind:        "tag",
 		resolve:     r.fetchSHA,
 		repoPath:    actionRepoPath,
-	}).checkAll(content)
+	}).checkAll(content, warns)
 }
 
 // pinActions pins floating `uses: action@tag` refs to their SHAs.
