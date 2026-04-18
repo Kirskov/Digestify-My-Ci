@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Kirskov/Shapin)](https://goreportcard.com/report/github.com/Kirskov/Shapin)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/12470/baseline)](https://www.bestpractices.dev/projects/12470)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12470/badge)](https://www.bestpractices.dev/projects/12470)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Kirskov/Shapin/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Kirskov/Shapin)
 
 Pin floating tags in CI workflow files to immutable SHAs, making your pipelines reproducible and immune to tag mutation attacks.
 
