@@ -43,26 +43,28 @@ func (r *forgejoResolver) IsMatch(relPath string) bool {
 }
 
 // Resolve pins `uses: owner/repo@tag` refs and Docker image: tags.
-func (r *forgejoResolver) Resolve(content string, pinActions, pinImages bool) (string, error) {
+func (r *forgejoResolver) Resolve(content string, pinActions, pinImages bool) (string, []string, error) {
+	var warns []string
 	if pinImages {
-		content = r.docker.resolveImages(content)
+		content = r.docker.resolveImages(content, &warns)
 	}
 	if !pinActions {
-		return content, nil
+		return content, warns, nil
 	}
-	r.warnIfDrifted(content)
-	return r.pinActions(content)
+	r.warnIfDrifted(content, &warns)
+	result, err := r.pinActions(content)
+	return result, warns, err
 }
 
 // warnIfDrifted checks already-pinned refs and warns if the SHA has changed.
 // The file is never modified — the user must fix it manually.
-func (r *forgejoResolver) warnIfDrifted(content string) {
+func (r *forgejoResolver) warnIfDrifted(content string, warns *[]string) {
 	(&driftChecker{
 		pinnedRegex: githubPinnedRegex,
 		kind:        "tag",
 		resolve:     r.fetchSHA,
 		repoPath:    actionRepoPath,
-	}).checkAll(content)
+	}).checkAll(content, warns)
 }
 
 func (r *forgejoResolver) pinActions(content string) (string, error) {

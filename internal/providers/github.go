@@ -49,26 +49,28 @@ func (r *githubResolver) IsMatch(relPath string) bool {
 }
 
 // Resolve replaces `uses: action@tag` and/or `image: name:tag` with pinned SHAs.
-func (r *githubResolver) Resolve(content string, pinActions, pinImages bool) (string, error) {
+func (r *githubResolver) Resolve(content string, pinActions, pinImages bool) (string, []string, error) {
+	var warns []string
 	if pinImages {
-		content = r.docker.resolveImages(content)
+		content = r.docker.resolveImages(content, &warns)
 	}
 	if !pinActions {
-		return content, nil
+		return content, warns, nil
 	}
-	r.warnIfDrifted(content)
-	return r.pinActions(content)
+	r.warnIfDrifted(content, &warns)
+	result, err := r.pinActions(content)
+	return result, warns, err
 }
 
 // warnIfDrifted scans for already-pinned refs and warns if the SHA no longer
 // matches the tag. The file is never modified — the user must fix it manually.
-func (r *githubResolver) warnIfDrifted(content string) {
+func (r *githubResolver) warnIfDrifted(content string, warns *[]string) {
 	(&driftChecker{
 		pinnedRegex: githubPinnedRegex,
 		kind:        "tag",
 		resolve:     r.fetchSHA,
 		repoPath:    actionRepoPath,
-	}).checkAll(content)
+	}).checkAll(content, warns)
 }
 
 // pinActions pins floating `uses: action@tag` refs to their SHAs.

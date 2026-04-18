@@ -91,12 +91,12 @@ func (r *gitlabResolver) IsMatch(relPath string) bool {
 // resolveComponentInputs pins image:tag values in inputs: blocks whose key
 // contains "TAG" (e.g. TRIVY_TAG, IMAGE_TAG). Uses yaml.v3 to identify which
 // keys are TAG inputs, then regex-replaces to preserve file formatting.
-func (r *gitlabResolver) resolveComponentInputs(content string) string {
+func (r *gitlabResolver) resolveComponentInputs(content string, warns *[]string) string {
 	tagKeys := collectTagInputKeys(content)
 	if len(tagKeys) == 0 {
 		return content
 	}
-	return gitlabInputTagRegex.ReplaceAllStringFunc(content, r.pinInputTagMatch(tagKeys))
+	return gitlabInputTagRegex.ReplaceAllStringFunc(content, r.pinInputTagMatch(tagKeys, warns))
 }
 
 // parseAllDocs decodes all YAML documents in content and returns their root nodes.
@@ -178,7 +178,7 @@ func collectTagKeysFromMap(node *yaml.Node, keys map[string]bool) {
 
 // pinInputTagMatch returns a replacement function for gitlabInputTagRegex that
 // pins values whose key is in tagKeys.
-func (r *gitlabResolver) pinInputTagMatch(tagKeys map[string]bool) func(string) string {
+func (r *gitlabResolver) pinInputTagMatch(tagKeys map[string]bool, warns *[]string) func(string) string {
 	return func(match string) string {
 		parts := gitlabInputTagRegex.FindStringSubmatch(match)
 		if len(parts) < 5 {
@@ -193,7 +193,7 @@ func (r *gitlabResolver) pinInputTagMatch(tagKeys map[string]bool) func(string) 
 
 		digest, err := r.docker.fetchDigest(image, tag)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  warn: GitLab input %s (%s:%s): %v\n", key, image, tag, err)
+			*warns = append(*warns, fmt.Sprintf("GitLab input %s (%s:%s): %v", key, image, tag, err))
 			return match
 		}
 
@@ -278,7 +278,7 @@ func (r *gitlabResolver) lookupStem(stem string) string {
 // by looking up the key's stem in tagMappings to find the image, then fetching
 // the digest for that version. Uses YAML parsing to identify eligible keys, then
 // regex replacement to preserve file formatting.
-func (r *gitlabResolver) resolveMappedVersionInputs(content string) string {
+func (r *gitlabResolver) resolveMappedVersionInputs(content string, warns *[]string) string {
 	mappedKeys := r.collectMappedVersionKeys(content)
 	if len(mappedKeys) == 0 {
 		return content
@@ -296,7 +296,7 @@ func (r *gitlabResolver) resolveMappedVersionInputs(content string) string {
 		image := r.lookupStem(stem)
 		digest, err := r.docker.fetchDigest(image, version)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  warn: GitLab input %s (%s:%s): %v\n", key, image, version, err)
+			*warns = append(*warns, fmt.Sprintf("GitLab input %s (%s:%s): %v", key, image, version, err))
 			return match
 		}
 		digestKey := toDigestKey(key)
@@ -312,6 +312,52 @@ type specInputEntry struct {
 	hasDescription bool
 }
 
+// findMappingChild returns the value node for the given key in a mapping node, or nil.
+func findMappingChild(node *yaml.Node, key string) *yaml.Node {
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			return node.Content[i+1]
+		}
+	}
+	return nil
+}
+
+// specInputsNode extracts the spec.inputs mapping node from a parsed YAML document root.
+func specInputsNode(root *yaml.Node) *yaml.Node {
+	doc := root
+	if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 {
+		doc = doc.Content[0]
+	}
+	if doc.Kind != yaml.MappingNode {
+		return nil
+	}
+	specNode := findMappingChild(doc, "spec")
+	if specNode == nil || specNode.Kind != yaml.MappingNode {
+		return nil
+	}
+	inputsNode := findMappingChild(specNode, "inputs")
+	if inputsNode == nil || inputsNode.Kind != yaml.MappingNode {
+		return nil
+	}
+	return inputsNode
+}
+
+// parseSpecInputEntry extracts the version and hasDescription fields from a spec input value node.
+func parseSpecInputEntry(valNode *yaml.Node) (version string, hasDescription bool) {
+	for j := 0; j+1 < len(valNode.Content); j += 2 {
+		switch valNode.Content[j].Value {
+		case "default":
+			v := valNode.Content[j+1].Value
+			if v != "" && !strings.HasPrefix(v, "$") && !isSHA(v) && !strings.Contains(v, ":") {
+				version = v
+			}
+		case "description":
+			hasDescription = true
+		}
+	}
+	return
+}
+
 // collectSpecInputEntries parses the YAML and returns entries for spec.inputs keys
 // whose value is a mapping containing a bare, pinnable default: version string.
 // e.g. AWS_CLI_IMAGE_DIGEST: {default: "2.34.28"} → {image: "amazon/aws-cli", version: "2.34.28"}
@@ -320,31 +366,8 @@ func (r *gitlabResolver) collectSpecInputEntries(content string) map[string]spec
 	if err := yaml.Unmarshal([]byte(content), &root); err != nil || root.Kind == 0 {
 		return nil
 	}
-	// Find the spec.inputs mapping node.
-	doc := &root
-	if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 {
-		doc = doc.Content[0]
-	}
-	if doc.Kind != yaml.MappingNode {
-		return nil
-	}
-	var inputsNode *yaml.Node
-	for i := 0; i+1 < len(doc.Content); i += 2 {
-		if doc.Content[i].Value == "spec" {
-			specVal := doc.Content[i+1]
-			if specVal.Kind != yaml.MappingNode {
-				break
-			}
-			for j := 0; j+1 < len(specVal.Content); j += 2 {
-				if specVal.Content[j].Value == "inputs" {
-					inputsNode = specVal.Content[j+1]
-					break
-				}
-			}
-			break
-		}
-	}
-	if inputsNode == nil || inputsNode.Kind != yaml.MappingNode {
+	inputsNode := specInputsNode(&root)
+	if inputsNode == nil {
 		return nil
 	}
 	entries := make(map[string]specInputEntry)
@@ -354,30 +377,11 @@ func (r *gitlabResolver) collectSpecInputEntries(content string) map[string]spec
 		if valNode.Kind != yaml.MappingNode {
 			continue
 		}
-		stem := extractStem(k)
-		if stem == "" {
-			continue
-		}
-		image := r.lookupStem(stem)
+		image := r.lookupStem(extractStem(k))
 		if image == "" {
 			continue
 		}
-		// Find the default: key inside the nested mapping.
-		var version string
-		var hasDescription bool
-		for j := 0; j+1 < len(valNode.Content); j += 2 {
-			switch valNode.Content[j].Value {
-			case "default":
-				v := valNode.Content[j+1].Value
-				if v == "" || strings.HasPrefix(v, "$") || isSHA(v) || strings.Contains(v, ":") {
-					version = "" // not pinnable
-				} else {
-					version = v
-				}
-			case "description":
-				hasDescription = true
-			}
-		}
+		version, hasDescription := parseSpecInputEntry(valNode)
 		if version != "" {
 			entries[k] = specInputEntry{image: image, version: version, hasDescription: hasDescription}
 		}
@@ -394,7 +398,7 @@ func (r *gitlabResolver) collectSpecInputEntries(content string) map[string]spec
 //
 //	default: sha256:xxx
 //	description: "SHA256 digest of amazon/aws-cli:2.34.28"
-func (r *gitlabResolver) resolveSpecInputs(content string) string {
+func (r *gitlabResolver) resolveSpecInputs(content string, warns *[]string) string {
 	entries := r.collectSpecInputEntries(content)
 	if len(entries) == 0 {
 		return content
@@ -402,7 +406,7 @@ func (r *gitlabResolver) resolveSpecInputs(content string) string {
 	for key, entry := range entries {
 		digest, err := r.docker.fetchDigest(entry.image, entry.version)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  warn: GitLab spec input %s (%s:%s): %v\n", key, entry.image, entry.version, err)
+			*warns = append(*warns, fmt.Sprintf("GitLab spec input %s (%s:%s): %v", key, entry.image, entry.version, err))
 			continue
 		}
 		imageTag := entry.image + ":" + entry.version
@@ -486,12 +490,12 @@ func (r *gitlabResolver) pinComponents(content string) (string, error) {
 }
 
 // warnIfDrifted checks already-pinned component refs and warns if the SHA has changed.
-func (r *gitlabResolver) warnIfDrifted(content string) {
+func (r *gitlabResolver) warnIfDrifted(content string, warns *[]string) {
 	(&driftChecker{
 		pinnedRegex: gitlabPinnedComponentRegex,
 		kind:        "ref",
 		resolve:     r.fetchComponentSHA,
-	}).checkAll(content)
+	}).checkAll(content, warns)
 }
 
 // fetchComponentSHA resolves a component ref to a commit SHA.
@@ -579,23 +583,24 @@ func extractProjectPath(component string) (string, error) {
 }
 
 // Resolve replaces image tags, bare version inputs, and component refs to digests/SHAs.
-func (r *gitlabResolver) Resolve(content string, pinActions, pinImages bool) (string, error) {
+func (r *gitlabResolver) Resolve(content string, pinActions, pinImages bool) (string, []string, error) {
+	var warns []string
 	result := content
 	if pinImages {
-		result = r.docker.resolveImages(result)
-		result = r.docker.resolveImageNames(result)
-		result = r.docker.resolveServices(result)
-		result = r.resolveComponentInputs(result)
-		result = r.resolveMappedVersionInputs(result)
-		result = r.resolveSpecInputs(result)
+		result = r.docker.resolveImages(result, &warns)
+		result = r.docker.resolveImageNames(result, &warns)
+		result = r.docker.resolveServices(result, &warns)
+		result = r.resolveComponentInputs(result, &warns)
+		result = r.resolveMappedVersionInputs(result, &warns)
+		result = r.resolveSpecInputs(result, &warns)
 	}
 	if pinActions {
-		r.warnIfDrifted(result)
+		r.warnIfDrifted(result, &warns)
 		var err error
 		result, err = r.pinComponents(result)
 		if err != nil {
-			return result, err
+			return result, warns, err
 		}
 	}
-	return result, nil
+	return result, warns, nil
 }
